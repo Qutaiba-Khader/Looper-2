@@ -16,8 +16,12 @@
 # Using .NET Framework MSBuild (from Git Bash)
 /c/Windows/Microsoft.NET/Framework/v4.0.30319/MSBuild.exe 'MPC-HC Looper VB.vbproj' //p:Configuration=Release //verbosity:minimal
 
+# Looper Fix Tool (companion utility)
+/c/Windows/Microsoft.NET/Framework/v4.0.30319/MSBuild.exe 'LooperFixTool/LooperFixTool.vbproj' //p:Configuration=Release //verbosity:minimal
+
 # Output
 bin/Release/Looper 2.exe
+bin/Release/LooperFixTool.exe   (+ Everything64.dll)
 ```
 
 ## Architecture
@@ -53,6 +57,26 @@ Two background threads run continuously:
 - **Loop Mode** — Loops between IN and OUT points continuously
 - **Playlist Mode** — Plays events sequentially, respects repeat counts
 - **Shuffle Mode** — Randomized event order using pre-shuffled array
+
+## Companion Tools
+
+### Looper Fix Tool (`LooperFixTool/`)
+WinForms utility that batch-fixes broken file paths in `.looper` files using Everything (voidtools.com) SDK.
+
+| File | Purpose |
+|------|---------|
+| `LooperFixTool/Program.vb` | Entry point, Application.Run |
+| `LooperFixTool/MainForm.vb` | GUI logic: drag-drop, add/remove, start/stop, threading |
+| `LooperFixTool/MainForm.Designer.vb` | Form layout: ListView, buttons, checkbox, progress bar |
+| `LooperFixTool/EverythingAPI.vb` | P/Invoke wrappers for Everything64.dll SDK |
+| `LooperFixTool/LooperFixer.vb` | Core logic: parse .looper, search, match, replace paths, logging |
+
+**Key behavior:**
+- Verifies Everything search results with `File.Exists()` to skip stale index entries
+- "Replace original" mode preserves file's Date Modified timestamp
+- Only writes output when paths actually changed
+- Caches search results per filename (one search per unique broken filename)
+- Auto-starts Everything minimized if not running
 
 ## File Map
 

@@ -141,6 +141,33 @@ Summary of all modifications made to the original Looper 2 codebase.
 
 ---
 
+## Companion Tools
+
+### Looper Fix Tool (`LooperFixTool.exe`)
+Standalone WinForms utility (lives alongside `Looper 2.exe`) that batch-fixes broken file paths in `.looper` files using [Everything](https://www.voidtools.com/) for fast filename search.
+
+**Features:**
+- Dark-themed GUI with ListView, drag-and-drop (files or folders), progress bar
+- Searches for missing files via Everything SDK (`Everything64.dll`) — requires Everything installed
+- Auto-starts Everything minimized (no UI) if not running, closes it when done
+- Caches search results per filename for speed
+- Verifies found paths actually exist on disk (skips stale Everything index entries)
+- **"Replace original"** checkbox — overwrites in-place while preserving the file's Date Modified timestamp
+- Without checkbox: saves as `filename-fixed.looper` in same directory
+- Only creates output if there are actual path changes
+- **Stop** button to cancel mid-run
+- **Log** button opens detailed log (`LooperFixTool.log`) showing every search query, result, and decision
+- Smart matching: exact filename match required; when multiple matches exist, prefers the path with most similar directory structure to the original
+
+**Limitations:**
+- Everything must be installed (used for search)
+- Files must exist on currently-connected, indexed drives to be found
+- Everything's stale index entries (unmounted drives) are filtered out via `File.Exists()` verification
+
+**Build:** `MSBuild LooperFixTool\LooperFixTool.vbproj /p:Configuration=Release`
+
+---
+
 ## Build/Project Changes
 
 ### 1. Removed Pre-Build Event (vbproj)

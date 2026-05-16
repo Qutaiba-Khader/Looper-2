@@ -1,9 +1,10 @@
-﻿Imports System.Globalization
+Imports System.Globalization
 Imports System.Runtime.InteropServices
+Imports System.Text
 Imports System.Threading
 
 ' MPC-HC Looper VB - Looper re-written in Visual Basic
-' © 2014-2025 Zach Glenwright / Gull's Wing Media Productions
+' (c) 2014-2025 Zach Glenwright / Gull's Wing Media Productions
 ' http://www.gullswingmedia.com
 
 ' ======================================================================================
@@ -51,7 +52,7 @@ Public Class mainWindow
     ' Handles to... handle inside of the threads above ^^
     Public MPCHandle As IntPtr ' MPC-HC's hWnd
     Private activeHwnd As IntPtr ' the currently active window
-    Private myHandle, plHandle As IntPtr ' the current hWnd for me, and for the playlist
+    Private myHandle As IntPtr ' the current hWnd for me
 
     ' Working with hotkeys
     Public disableHotkeys As Boolean = False ' whether or not to disable hotkeys
@@ -105,6 +106,39 @@ Public Class mainWindow
                                       {"CS|68", Nothing, "De-Select all events in Events List"}}
 
     ' ======================================================================================
+    ' ================= PLAYLIST WINDOW VARIABLES (merged from playlistWindow) ==============
+    ' ======================================================================================
+
+    Public currentLooperFile As String = Nothing ' the current .looper file loaded in the playlist
+
+    Public currentPlayingEvent As Integer = -1 ' which event is currently playing
+    Public actualPlayingEvent As Integer = -1 ' the actual event that's playing (keeping track for getting out of Shuffle Mode)
+
+    Dim totalNumberOfEvents As Integer = 100 ' the number to start ordering events from
+
+    Dim isModified As Boolean = False ' whether or not we've modified the current looper playlist
+    Dim insertItem As Boolean = False ' whether or not to allow inserting items into the events list
+    Dim SelectedLSI As ListViewItem.ListViewSubItem ' for modifying event list names and loops
+
+    Public stilLLoading As Boolean = False ' set this to True when doing loadEvent() so the program doesn't ask to load multiple things at once
+
+    Dim inSearchMode As Boolean = False ' if we're in search mode or not
+    Dim currentSearchPlayingEvent As Integer = -1 ' the ID# (from (0) of the event in the events list) of the current playing event's position in the playlist
+    Dim eventsListArray(0, 0) As Object ' an array to hold the events list items during searching
+
+    Public normalFont As New Font("Segoe UI", 9) ' the normal "non-playing" font for the events list
+    Public boldFont As New Font("Segoe UI", 9, FontStyle.Bold) ' the bold "playing" font for the events list
+
+    ReadOnly errorColor As Color = Color.FromArgb(58, 26, 26)
+    ReadOnly foundColor As Color = Color.FromArgb(30, 30, 48)
+    ReadOnly relativeColor As Color = Color.FromArgb(26, 42, 58)
+    ReadOnly errorForeColor As Color = Color.FromArgb(255, 136, 136)
+    ReadOnly errorFileCellColor As Color = Color.FromArgb(255, 102, 102)
+    ReadOnly playingColor As Color = Color.FromArgb(26, 58, 42)
+    ReadOnly playingForeColor As Color = Color.FromArgb(136, 255, 136)
+    ReadOnly normalForeColor As Color = Color.White
+
+    ' ======================================================================================
     ' ================= DLL CALLS AND STRUCTURES ===========================================
     ' ======================================================================================
 
@@ -124,6 +158,9 @@ Public Class mainWindow
 
     ' Returns the current foreground window (to check to see whether hotkeys should be enabled or not)
     Private Declare Function GetForegroundWindow Lib "user32" () As IntPtr
+
+    ' Set specific window (MPC-HC) as the frontmost window
+    Public Declare Function SetForegroundWindow Lib "user32" (ByVal hWnd As IntPtr) As Integer
 
     ' Registers a hotkey with the system
     Private Declare Function RegisterHotKey Lib "user32" _
@@ -194,23 +231,20 @@ Public Class mainWindow
 
                 Select Case CopyDataStruct.dwData
                     Case CType(&H5000F634, IntPtr) ' recieving a message from another Looper instance (so we don't need a temp file like we've been doing)
-                        ' TODO (maybe later) - better define this message so we can send other commands - right now, it's just "open file", so we take it at face value
-                        ' i.e.: Send it as a "|" delimited string, and - Dim looperControlArray() as String = Split(theMessage, "|")
-
-                        loadLooperFile(theMessage)
+                        loadLooperFile(True, theMessage)
                     Case CType(CMD_RECEIVED.CMD_CONNECT, IntPtr) ' received when MPC-HC connects to Looper for the first time
                         MPCHandle = m.WParam ' the current hWnd of the current MPC-HC instance
                         Log("MPC-HC connected, hWnd=" & MPCHandle.ToString())
 
                         clearInPoint()
                         clearOutPoint()
-                        playlistWindow.SetForegroundWindow(MPCHandle) ' make MPC-HC the foreground window
+                        SetForegroundWindow(MPCHandle) ' make MPC-HC the foreground window
 
                         If My.Application.CommandLineArgs.Count > 0 Then ' if we gave Looper a .looper file to open, then open it
                             Dim pathToOpen = My.Application.CommandLineArgs(0)
 
                             If Strings.InStr(pathToOpen, ".looper") <> 0 Then ' if the file we passed to Looper has a .looper extension, then open it as a Looper file
-                                loadLooperFile(pathToOpen)
+                                loadLooperFile(True, pathToOpen)
                             End If
                         Else ' if we didn't, but we're set up to open the last file from the INI file, then open that...
                             If autoloadLastLooper <> Nothing Then
@@ -218,10 +252,9 @@ Public Class mainWindow
 
                                 If autoloadArray(0) <> Nothing Then ' if there's a filename in the array instead of Nothing
                                     If autoloadArray(1) <> "-1" Then ' and there's an event number that's not -1
-                                        loadLooperFile(autoloadArray(0), CInt(autoloadArray(1))) ' load the looper file, at the event specified
+                                        loadLooperFile(True, autoloadArray(0), CInt(autoloadArray(1))) ' load the looper file, at the event specified
                                     Else
-                                        ' TODO: check if we actually need the -1 check - I don't think there's a save function that saves -1
-                                        loadLooperFile(autoloadArray(0)) ' load the looper file at the beginning
+                                        loadLooperFile(True, autoloadArray(0)) ' load the looper file at the beginning
                                     End If
                                 End If
                             End If
@@ -231,30 +264,30 @@ Public Class mainWindow
                         currentPosition += 0.5 ' the position MPC-HC returns is actually -0.5 (half a second) behind what the actual position is
 
                         If currentOrRemaining = False Then ' show the current position
-                            If currentPositionTF.Text <> NumberToTimeString(currentPosition) Then
-                                currentPositionTF.Text = NumberToTimeString(currentPosition)
+                            If currentPositionLabel.Text <> NumberToTimeString(currentPosition) Then
+                                currentPositionLabel.Text = NumberToTimeString(currentPosition)
                             End If
                         Else ' show the time remaining in the current event/loop
                             If TimeStringToNumber(outTF.Text) - currentPosition > 0 Then
-                                If currentPositionTF.Text <> "-" & NumberToTimeString(TimeStringToNumber(outTF.Text) - currentPosition) Then
-                                    currentPositionTF.Text = "-" & NumberToTimeString(TimeStringToNumber(outTF.Text) - currentPosition)
+                                If currentPositionLabel.Text <> "-" & NumberToTimeString(TimeStringToNumber(outTF.Text) - currentPosition) Then
+                                    currentPositionLabel.Text = "-" & NumberToTimeString(TimeStringToNumber(outTF.Text) - currentPosition)
                                 End If
                             Else
-                                If currentPositionTF.Text <> "-0:00.000" Then
-                                    currentPositionTF.Text = "-0:00.000"
+                                If currentPositionLabel.Text <> "-0:00.000" Then
+                                    currentPositionLabel.Text = "-0:00.000"
                                 End If
                             End If
                         End If
 
                         ' ----------------- DO THE LOOP DO THE LOOP DO THE LOOP! -----------------
                         Select Case loopModeButton.Text
-                            Case "Loop Mode" ' if we're in LOOP MODE
+                            Case "LOOP" ' if we're in LOOP MODE
                                 If Not {outTF.Text, inTF.Text}.Contains(Nothing) Then ' if both the IN and OUT point have values
                                     If currentPosition > TimeStringToNumber(outTF.Text) Then ' and the current position reported is past the value in the OUT point
                                         SendMessage(CMD_SEND.CMD_SETPOSITION, CStr(TimeStringToNumber(inTF.Text) - 0.5)) ' move MPC-HC back to the IN point
                                     End If
                                 End If
-                            Case "Playlist Mode", "Shuffle Mode" ' if we're in PLAYLIST or SHUFFLE modes
+                            Case "PLAYLIST", "SHUFFLE" ' if we're in PLAYLIST or SHUFFLE modes
                                 If Not {outTF.Text, inTF.Text}.Contains(Nothing) Then
                                     If outTF.Text <> Nothing Then ' if the OUT point field has a value set in it
                                         If currentPosition > TimeStringToNumber(outTF.Text) Then
@@ -265,8 +298,8 @@ Public Class mainWindow
                                                 SendMessage(CMD_SEND.CMD_SETPOSITION, CStr(TimeStringToNumber(inTF.Text) - 0.5))
                                                 loopsRepeatTF.Text = CStr(repeatCount - 1)
                                             Else ' we've reached the last loop repeat, so jump to the next event
-                                                If playlistWindow.eventsList.Items.Count > 1 Then
-                                                    playlistWindow.loadPrevNextEvent(1) ' load the next event
+                                                If eventsList.Items.Count > 1 Then
+                                                    loadPrevNextEvent(1) ' load the next event
                                                 Else ' if we have only one event, then we're basically in loop mode, so just treat it that way!
                                                     SendMessage(CMD_SEND.CMD_SETPOSITION, CStr(TimeStringToNumber(inTF.Text) - 0.5))
                                                 End If
@@ -275,7 +308,7 @@ Public Class mainWindow
                                     Else ' if the OUT point has no value set in it, then...
                                         SendMessage(CMD_SEND.CMD_GETNOWPLAYING) ' force updating the NOWPLAYING info to get the duration
                                         outTF.Text = NumberToTimeString(currentDuration + 0.5 - outPointOffset) ' set the OUT point to the duration
-                                        playlistWindow.modifyEvent(playlistWindow.currentPlayingEvent) ' and modify the current event to reflect that duration
+                                        modifyEvent(currentPlayingEvent) ' and modify the current event to reflect that duration
                                     End If
                                 End If
                         End Select
@@ -301,20 +334,20 @@ Public Class mainWindow
                             ' for files that are added to the playlist by dragging and dropping them on to it.)
                             If CStr(TimeStringToNumber(outTF.Text)) = "0" Then
                                 outTF.Text = NumberToTimeString(currentDuration + 0.5 - outPointOffset)
-                                playlistWindow.modifyEvent(playlistWindow.currentPlayingEvent)
+                                modifyEvent(currentPlayingEvent)
                             End If
 
                             ' if we're not in OFF or LOOP modes, then make MPC-HC the foreground window to make it easier to do MPC-HC things
                             ' (like pausing once the playback starts, making larger, etc.)
                             If getMode() Then
-                                playlistWindow.SetForegroundWindow(MPCHandle)
+                                SetForegroundWindow(MPCHandle)
                             End If
 
                             ' re-initialize these values to their defaults
                             loadingEvent = False
                             loadingEvent_Speed = 100
 
-                            playlistWindow.stilLLoading = False
+                            stilLLoading = False
                         Else ' we're not loading an event
                             If waitForSecondTick = 0 Then ' if MPC-HC loaded the file, we want to wait for 2 responses from this message before checking speed
                                 waitForSecondTick = 1 ' skip this time around and wait for the next one
@@ -340,7 +373,7 @@ Public Class mainWindow
                         End If
                     Case CType(CMD_RECEIVED.CMD_DISCONNECT, IntPtr) ' received when MPC-HC quits on its own - we can't come back from this, so see if we want to save
                         Log("MPC-HC disconnected")
-                        playlistWindow.unInitialize(True)
+                        unInitialize(True)
                         Me.Close()
                 End Select
 
@@ -360,9 +393,7 @@ Public Class mainWindow
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture
 
-        Me.Hide() ' hide the window on boot, so moving it to its final destination is done in the background
         Me.Icon = My.Resources.icon ' Set the Form icon to the main program icon
-        Me.MaximizeBox = False ' Disable the Maximize box
 
         If My.Computer.Keyboard.CtrlKeyDown = True Then ' re-initialize Looper from the beginning
             findLooperWindow.ShowDialog() ' show the "first launch" dialog to find MPC-HC's executable file
@@ -370,26 +401,12 @@ Public Class mainWindow
 
         If My.Computer.Keyboard.ShiftKeyDown = True Then ' load the defaults (Loop Mode, slip/preview, window positions, etc.) for Looper
             loadINIFileForDefaults() ' load only the MPC-HC values, but the rest are default
-            openPlaylistWindow() ' open the playlist window by default
             changeAlwaysOnTop() ' change Always on Top to be true, so Looper sits on top of everything else
         Else ' load Looper like it normally would (this is where we'll USUALLY be)
             loadINIFile() ' load the values from the INI file, and set Looper up from those
         End If
 
-        ' Place the current position counter above the background, on the left
-        currentPositionTF.Parent = currentPositionBG
-        currentPositionTF.BackColor = Color.Transparent
-        currentPositionTF.BringToFront()
-        currentPositionTF.Location = New Point(0, 0)
-
-        ' Place the current loop repeats counter above the background, on the right
-        loopsRepeatTF.Parent = currentPositionBG
-        loopsRepeatTF.BackColor = Color.Transparent
-        loopsRepeatTF.BringToFront()
-        loopsRepeatTF.Location = New Point(178, 0)
-
         myHandle = Me.Handle ' my hWnd (for hotkey testing)
-        plHandle = playlistWindow.Handle ' the playlist window's hWnd (for hotkey testing)
 
         posThread = New Thread(AddressOf doTheLoop) With {
             .IsBackground = True
@@ -426,21 +443,18 @@ Public Class mainWindow
         End If
     End Function
 
-    Private Sub mainWindow_Move(sender As Object, e As EventArgs) Handles MyBase.Move
-        If Not (playlistWindow.Left < Me.Left - 200 Or playlistWindow.Left > Me.Left + 200) Then ' we've strayed away from the "magnet" bounds of the main window
-            playlistWindow.Left = Me.Left
-            playlistWindow.Top = Me.Top + Me.Height - 6
-        End If
+    Private Sub mainWindow_Activated(sender As Object, e As EventArgs) Handles MyBase.Activated
+        selectedEventsButtonTriggers()
     End Sub
 
     Private Sub mainWindow_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
-        If isQuitting = False Then ' we're not already trying to quit from playlistWindow
-            clearHotKeys() ' turn off the hokkeys
+        If isQuitting = False Then ' we're not already trying to quit
+            clearHotKeys() ' turn off the hotkeys
 
             If (e.CloseReason = CloseReason.UserClosing) Then
-                Dim confirmSave = playlistWindow.unInitialize() ' ask if we want to save, want to quit, etc.
+                Dim confirmSave = unInitialize() ' ask if we want to save, want to quit, etc.
 
-                If confirmSave = DialogResult.Cancel Then ' if we chose NOT to to quit, then turn things back on
+                If confirmSave = DialogResult.Cancel Then ' if we chose NOT to quit, then turn things back on
                     setHotKeys()
                     isQuitting = False
 
@@ -451,27 +465,8 @@ Public Class mainWindow
             End If
         End If
 
-        playlistWindow.saveLastPlayedFile() ' save the last played .looper and event to the INI file
-    End Sub
-
-    Private Sub loadOptionsWindowButton_MouseEnter(sender As Object, e As EventArgs) Handles loadOptionsWindowButton.MouseEnter
-        loadOptionsWindowButton.BackgroundImage = My.Resources.Gear_42px_Blue
-    End Sub
-
-    Private Sub loadOptionsWindowButton_MouseLeave(sender As Object, e As EventArgs) Handles loadOptionsWindowButton.MouseLeave
-        loadOptionsWindowButton.BackgroundImage = My.Resources.Gear_42px_Grey
-    End Sub
-
-    Private Sub showPlayingFileInExplorerButton_MouseEnter(sender As Object, e As EventArgs) Handles showPlayingFileInExplorerButton.MouseEnter
-        showPlayingFileInExplorerButton.BackgroundImage = My.Resources.Folder_42px_Blue
-    End Sub
-
-    Private Sub showPlayingFileInExplorerButton_MouseLeave(sender As Object, e As EventArgs) Handles showPlayingFileInExplorerButton.MouseLeave
-        showPlayingFileInExplorerButton.BackgroundImage = My.Resources.Folder_42px_Grey
-    End Sub
-
-    Private Sub mainWindow_Resize(sender As Object, e As EventArgs) Handles MyBase.Resize
-        playlistWindow.WindowState = Me.WindowState ' minimize or show the Playlist window if the main window is minimized/restored
+        saveLastPlayedFile() ' save the last played .looper and event to the INI file
+        saveWindowPosition() ' save window position and size
     End Sub
 
     ' ======================================================================================
@@ -497,7 +492,7 @@ Public Class mainWindow
             If isQuitting = False Then
                 activeHwnd = GetForegroundWindow() ' see which window is currently the foreground window
 
-                If {myHandle, plHandle, MPCHandle}.Contains(activeHwnd) Then ' if the foreground window is either the control panel, playlist or MPC-HC's instance's window
+                If {myHandle, MPCHandle}.Contains(activeHwnd) Then ' if the foreground window is either the main window or MPC-HC's instance's window
                     If hotkeysActive = False Then
                         Try
                             Me.Invoke(Sub() setHotKeys()) ' turn hotkeys on
@@ -526,14 +521,6 @@ Public Class mainWindow
     ' ======================================================================================
     ' ================= FILESYSTEM FUNCTIONS ===============================================
     ' ======================================================================================
-
-    Private Sub loadLooperFile(ByVal fileToOpen As String, Optional eventToPlay As Integer = -1)
-        If eventToPlay = -1 Then ' technically we don't need to do this, as we do error checking in the loadLooperFile procedure itself, but it's good to reduce the load
-            playlistWindow.loadLooperFile(True, fileToOpen) ' if we don't have a specific event to open, then just load the .looper file
-        Else
-            playlistWindow.loadLooperFile(True, fileToOpen, eventToPlay) ' load the looper file, and load this specific event in it
-        End If
-    End Sub
 
     Private Sub loadINIFile()
         While Not My.Computer.FileSystem.GetFileInfo(INIFile).Exists ' if the INI file for Looper doesn't exist
@@ -600,18 +587,19 @@ Public Class mainWindow
         Dim startPositionT As String = betweenTheLines(fileReader, "startPositionT=", vbCrLf, "-1") ' the top-most coordinate to open Looper at
         If startPositionT <> "-1" Then Me.Top = CInt(startPositionT)
 
-        Dim startPLPositionL As String = betweenTheLines(fileReader, "startPLPositionL=", vbCrLf, "0") ' the left-most coordinate to open Looper's playlist at
-        Dim startPLPositionT As String = betweenTheLines(fileReader, "startPLPositionT=", vbCrLf, "0") ' the top-most coordinate to open Looper playlist at
-        Dim startPLPositionW As String = betweenTheLines(fileReader, "startPLPositionW=", vbCrLf, "0") ' the width of Looper's playlist - check against min size
-        Dim startPLPositionH As String = betweenTheLines(fileReader, "startPLPositionH=", vbCrLf, "0") ' the height of Looper's playlist - check against min size
+        Dim startPositionW As String = betweenTheLines(fileReader, "startPositionW=", vbCrLf, "-1")
+        If startPositionW <> "-1" Then Me.Width = CInt(startPositionW)
 
-        Dim hidePlaylistOnLaunch As Boolean
-        Boolean.TryParse(betweenTheLines(fileReader, "hidePlaylistOnLaunch=", vbCrLf, "B_False"), hidePlaylistOnLaunch) ' whether or not to show the playlist when Looper opens
+        Dim startPositionH As String = betweenTheLines(fileReader, "startPositionH=", vbCrLf, "-1")
+        If startPositionH <> "-1" Then Me.Height = CInt(startPositionH)
 
-        openPlaylistWindow(CInt(startPLPositionL), CInt(startPLPositionT), CInt(startPLPositionW), CInt(startPLPositionH), hidePlaylistOnLaunch)
-
-        Dim loopButtonMode As String = betweenTheLines(fileReader, "loopButtonMode=", vbCrLf, "Loop Mode") ' what the loop button mode should be on launching
-        If loopButtonMode = "Off" Then switchToOffMode() ' we're set to be in Looper Mode by default, so no need to switch *back* to it on startup
+        Dim loopButtonMode As String = betweenTheLines(fileReader, "loopButtonMode=", vbCrLf, "LOOP")
+        Select Case loopButtonMode
+            Case "Off", "OFF" : switchToOffMode()
+            Case "Loop Mode", "LOOP" ' default, no switch needed
+            Case "Playlist Mode", "PLAYLIST" : switchToPlaylistMode()
+            Case "Shuffle Mode", "SHUFFLE" : switchToShuffleMode()
+        End Select
 
         autoloadLastLooper = betweenTheLines(fileReader, "autoloadLastLooper=", vbCrLf, Nothing) ' should we launch the last looper file when closed?
 
@@ -670,8 +658,58 @@ Public Class mainWindow
     End Sub
 
     Private Sub showFileInExplorer()
-        Log("Open .looper file clicked")
-        playlistWindow.loadLooperFile()
+        If currentPlayingFile IsNot Nothing Then
+            Process.Start("explorer.exe", "/select, """ & currentPlayingFile & """")
+        End If
+    End Sub
+
+    Private Sub saveWindowPosition()
+        Try
+            Dim fileReader As String = My.Computer.FileSystem.ReadAllText(INIFile)
+
+            ' Update or add startPositionL
+            Dim writingString As String = fileReader
+            If Strings.InStr(writingString, "startPositionL=") > 0 Then
+                Dim startOffset = Strings.InStr(writingString, "startPositionL=")
+                Dim endOffset = Strings.InStr(startOffset, writingString, vbCrLf)
+                writingString = Strings.Left(writingString, startOffset - 1) & "startPositionL=" & Me.Left & vbCrLf & Strings.Mid(writingString, endOffset + 2)
+            End If
+
+            If Strings.InStr(writingString, "startPositionT=") > 0 Then
+                Dim startOffset = Strings.InStr(writingString, "startPositionT=")
+                Dim endOffset = Strings.InStr(startOffset, writingString, vbCrLf)
+                writingString = Strings.Left(writingString, startOffset - 1) & "startPositionT=" & Me.Top & vbCrLf & Strings.Mid(writingString, endOffset + 2)
+            End If
+
+            If Strings.InStr(writingString, "startPositionW=") > 0 Then
+                Dim startOffset = Strings.InStr(writingString, "startPositionW=")
+                Dim endOffset = Strings.InStr(startOffset, writingString, vbCrLf)
+                writingString = Strings.Left(writingString, startOffset - 1) & "startPositionW=" & Me.Width & vbCrLf & Strings.Mid(writingString, endOffset + 2)
+            Else
+                ' Add it after startPositionT line
+                If Strings.InStr(writingString, "startPositionT=") > 0 Then
+                    Dim startOffset = Strings.InStr(writingString, "startPositionT=")
+                    Dim endOffset = Strings.InStr(startOffset, writingString, vbCrLf)
+                    writingString = Strings.Left(writingString, endOffset + 1) & "startPositionW=" & Me.Width & vbCrLf & Strings.Mid(writingString, endOffset + 2)
+                End If
+            End If
+
+            If Strings.InStr(writingString, "startPositionH=") > 0 Then
+                Dim startOffset = Strings.InStr(writingString, "startPositionH=")
+                Dim endOffset = Strings.InStr(startOffset, writingString, vbCrLf)
+                writingString = Strings.Left(writingString, startOffset - 1) & "startPositionH=" & Me.Height & vbCrLf & Strings.Mid(writingString, endOffset + 2)
+            Else
+                ' Add it after startPositionW line
+                If Strings.InStr(writingString, "startPositionW=") > 0 Then
+                    Dim startOffset = Strings.InStr(writingString, "startPositionW=")
+                    Dim endOffset = Strings.InStr(startOffset, writingString, vbCrLf)
+                    writingString = Strings.Left(writingString, endOffset + 1) & "startPositionH=" & Me.Height & vbCrLf & Strings.Mid(writingString, endOffset + 2)
+                End If
+            End If
+
+            System.IO.File.WriteAllText(INIFile, writingString)
+        Catch ex As Exception
+        End Try
     End Sub
 
     ' ======================================================================================
@@ -742,7 +780,7 @@ Public Class mainWindow
             If hotKeyID = -1 Or hotKeyID = 131 Then assignHotKey(Me.Handle, 131) ' Slow down playback in MPC-HC
             If hotKeyID = -1 Or hotKeyID = 132 Then assignHotKey(Me.Handle, 132) ' Reset speed to default speed in MPC-HC
 
-            If hotKeyID = -1 Or hotKeyID = 133 Then assignHotKey(Me.Handle, 133) ' Go to the Search field of the Playlist window
+            If hotKeyID = -1 Or hotKeyID = 133 Then assignHotKey(Me.Handle, 133) ' Go to the Search field
             If hotKeyID = -1 Or hotKeyID = 134 Then assignHotKey(Me.Handle, 134) ' Select ALL the events in the events list
             If hotKeyID = -1 Or hotKeyID = 135 Then assignHotKey(Me.Handle, 135) ' Select NONE of the events in the events list
 
@@ -793,7 +831,7 @@ Public Class mainWindow
             If hotKeyID = -1 Or hotKeyID = 137 Then UnregisterHotKey(Me.Handle, 130) ' Speed up playback in MPC-HC
             If hotKeyID = -1 Or hotKeyID = 138 Then UnregisterHotKey(Me.Handle, 131) ' Slow down playback in MPC-HC
             If hotKeyID = -1 Or hotKeyID = 139 Then UnregisterHotKey(Me.Handle, 132) ' Reset speed to 100% in MPC-HC
-            If hotKeyID = -1 Or hotKeyID = 140 Then UnregisterHotKey(Me.Handle, 133) ' Go to the Search field of the Playlist window
+            If hotKeyID = -1 Or hotKeyID = 140 Then UnregisterHotKey(Me.Handle, 133) ' Go to the Search field
 
             If hotKeyID = -1 Or hotKeyID = 141 Then UnregisterHotKey(Me.Handle, 134) ' Select ALL the events in the events list
             If hotKeyID = -1 Or hotKeyID = 142 Then UnregisterHotKey(Me.Handle, 135) ' Select NONE of the events in the events list
@@ -805,7 +843,7 @@ Public Class mainWindow
     End Sub
 
     Public Function getMode() As Boolean
-        If {"Off", "Loop Mode"}.Contains(loopModeButton.Text) Then
+        If {"OFF", "LOOP"}.Contains(loopModeButton.Text) Then
             Return True ' if we're in Loop Mode or OFF, then we can do things with IN/OUT points
         Else
             Return False ' otherwise, don't allow it!
@@ -864,49 +902,49 @@ Public Class mainWindow
                 showFileInExplorer()
 
             Case 122 ' create new event
-                If getMode() Then playlistWindow.addEvent()
+                If getMode() Then addEvent()
             Case 123 ' delete currently selected event(s)
-                If getMode() Then playlistWindow.deleteEvents()
+                If getMode() Then deleteEvents()
             Case 124 ' save current events list
-                If getMode() Then playlistWindow.saveLooperFile()
+                If getMode() Then saveLooperFile()
             Case 125 ' save the selected items as a new Looper file
-                playlistWindow.saveLooperFile(True)
+                saveLooperFile(True)
             Case 126 ' load new events list
-                playlistWindow.loadLooperFile()
+                loadLooperFile()
             Case 127 ' import .looper file into the current events list
-                playlistWindow.loadLooperFile(False)
+                loadLooperFile(False)
             Case 128 ' go to one event prior in the events list
-                playlistWindow.loadPrevNextEvent(-1)
+                loadPrevNextEvent(-1)
             Case 129 ' go to one event next in the events list
-                playlistWindow.loadPrevNextEvent(1)
+                loadPrevNextEvent(1)
             Case 130 ' Speed up playback in MPC-HC
                 If getMode() Then setSpeed(speedSlider.Value + 10)
             Case 131 ' Slow down playback in MPC-HC
                 If getMode() Then setSpeed(speedSlider.Value - 10)
             Case 132 ' Reset speed to 100% in MPC-HC
                 If getMode() Then setSpeed(defaultSpeed)
-            Case 133 ' Go to the Search field of the Playlist window
-                playlistWindow.searchTF.Select()
+            Case 133 ' Go to the Search field
+                searchTF.Select()
 
             Case 134 ' Select ALL the events in the events list
-                If playlistWindow.eventsList.Items.Count > 0 Then
-                    playlistWindow.eventsList.BeginUpdate()
+                If eventsList.Items.Count > 0 Then
+                    eventsList.BeginUpdate()
 
-                    For a As Integer = 0 To playlistWindow.eventsList.Items.Count - 1
-                        playlistWindow.eventsList.Items(a).Selected = True
+                    For a As Integer = 0 To eventsList.Items.Count - 1
+                        eventsList.Items(a).Selected = True
                     Next
 
-                    playlistWindow.eventsList.EndUpdate()
+                    eventsList.EndUpdate()
                 End If
             Case 135 ' Select NONE of the events in the events list
-                If playlistWindow.eventsList.Items.Count > 0 Then
-                    playlistWindow.eventsList.BeginUpdate()
+                If eventsList.Items.Count > 0 Then
+                    eventsList.BeginUpdate()
 
-                    For a As Integer = 0 To playlistWindow.eventsList.Items.Count - 1
-                        playlistWindow.eventsList.Items(a).Selected = False
+                    For a As Integer = 0 To eventsList.Items.Count - 1
+                        eventsList.Items(a).Selected = False
                     Next
 
-                    playlistWindow.eventsList.EndUpdate()
+                    eventsList.EndUpdate()
                 End If
 
         End Select
@@ -924,20 +962,8 @@ Public Class mainWindow
         setOutPoint()
     End Sub
 
-    Private Sub inPointClearButton_Click(sender As Object, e As EventArgs) Handles inPointClearButton.Click
-        clearInPoint()
-    End Sub
 
-    Private Sub outPointClearButton_Click(sender As Object, e As EventArgs) Handles outPointClearButton.Click
-        clearOutPoint()
-    End Sub
-
-    Private Sub clearAllPointsButton_Click(sender As Object, e As EventArgs) Handles clearAllPointsButton.Click
-        clearInPoint()
-        clearOutPoint()
-    End Sub
-
-    Private Sub currentPositionTF_Click(sender As Object, e As EventArgs) Handles currentPositionTF.Click
+    Private Sub currentPositionLabel_Click(sender As Object, e As EventArgs) Handles currentPositionLabel.Click
         switchCurrentAndRemaining()
     End Sub
 
@@ -949,91 +975,12 @@ Public Class mainWindow
         switchCurrentAndRemaining()
     End Sub
 
-    Private Sub togglePlaylistButton_Click(sender As Object, e As EventArgs) Handles togglePlaylistButton.Click
-        openPlaylistWindow()
-    End Sub
-
-    Private Sub togglePlaylistButton_MouseMove(sender As Object, e As MouseEventArgs) Handles togglePlaylistButton.MouseMove
-        If (My.Computer.Keyboard.ShiftKeyDown = True And My.Computer.Keyboard.CtrlKeyDown) Then
-            togglePlaylistButton.Text = "MOVE BACK"
-        End If
-    End Sub
-
-    Private Sub togglePlaylistButton_MouseLeave(sender As Object, e As EventArgs) Handles togglePlaylistButton.MouseLeave
-        If playlistWindow.Visible = True Then
-            togglePlaylistButton.Text = "HIDE PLAYLIST"
-        Else
-            togglePlaylistButton.Text = "SHOW PLAYLIST"
-        End If
-    End Sub
-
-    Public Sub openPlaylistWindow(Optional movePLWindowL As Integer = -1,
-                                  Optional movePLWindowT As Integer = -1,
-                                  Optional movePLWindowW As Integer = -1,
-                                  Optional movePLWindowH As Integer = -1,
-                                  Optional forceHide As Boolean = False)
-
-        Dim forceReset As Boolean = False ' set to True to resize the playlist window to the default size/location, but not hide the window
-
-        ' If you hold CTRL and SHIFT down at the same time while clicking on the SHOW/HIDE BUTTON
-        If (My.Computer.Keyboard.ShiftKeyDown = True And My.Computer.Keyboard.CtrlKeyDown) Then
-            forceReset = True
-            movePLWindowL = 0
-            movePLWindowT = 0
-            movePLWindowW = 0
-            movePLWindowH = 0
-        End If
-
-        If Not movePLWindowL = -1 Then
-            If movePLWindowL = 0 Then
-                playlistWindow.Left = Me.Left ' if we don't specify a value for Left, then open it relative to the main window
-            Else
-                playlistWindow.Left = movePLWindowL ' if we specify a Left value, then open the playlist at this position
-            End If
-        End If
-
-        If Not movePLWindowT = -1 Then
-            If movePLWindowT = 0 Then
-                playlistWindow.Top = Me.Top + Me.Height - 6 ' if we don't specify a value for Top, then open it relative to the main window
-            Else
-                playlistWindow.Top = movePLWindowT ' if we specify a Top value, then open the playlist at this position
-            End If
-        End If
-
-        If Not movePLWindowW = -1 Then
-            If movePLWindowW = 0 Then
-                playlistWindow.Width = Me.Width
-            Else
-                playlistWindow.Width = movePLWindowW ' if there's a value for width, then resize it to this width
-            End If
-        End If
-
-        If Not movePLWindowH = -1 Then
-            If movePLWindowH = 0 Then
-                playlistWindow.Height = 538
-            Else
-                playlistWindow.Height = movePLWindowH ' if there's a value for height, then resize it to this height
-            End If
-        End If
-
-        If forceHide = True Or playlistWindow.Visible = True Then ' force the window closed
-            If forceReset = False Then ' if we're forcing a reset of the window's positions, then don't hide it
-                togglePlaylistButton.Text = "SHOW PLAYLIST"
-                playlistWindow.Hide()
-            End If
-        Else
-            togglePlaylistButton.Text = "HIDE PLAYLIST"
-            playlistWindow.TopMost = Me.TopMost
-            playlistWindow.Show()
-        End If
-    End Sub
-
     Private Sub loadOptionsWindowButton_Click(sender As Object, e As EventArgs) Handles loadOptionsWindowButton.Click
         optionsWindow.ShowDialog()
     End Sub
 
     Private Sub showPlayingFileInExplorerButton_Click(sender As Object, e As EventArgs) Handles showPlayingFileInExplorerButton.Click
-        showFileInExplorer()
+        loadLooperFile()
     End Sub
 
     Private Sub loopModeButton_Click(sender As Object, e As EventArgs) Handles loopModeButton.Click
@@ -1041,15 +988,15 @@ Public Class mainWindow
     End Sub
 
     Private Sub switchLoopMode()
-        If loopModeButton.Text = "Loop Mode" Then
-            If playlistWindow.eventsList.Items.Count > 0 Then
+        If loopModeButton.Text = "LOOP" Then
+            If eventsList.Items.Count > 0 Then
                 switchToPlaylistMode()
             Else
                 switchToOffMode()
             End If
-        ElseIf loopModeButton.Text = "Playlist Mode" Then
+        ElseIf loopModeButton.Text = "PLAYLIST" Then
             switchToOffMode()
-        ElseIf loopModeButton.Text = "Off" Then
+        ElseIf loopModeButton.Text = "OFF" Then
             switchToLoopMode()
         End If
     End Sub
@@ -1059,45 +1006,35 @@ Public Class mainWindow
         outTF.Enabled = onOrOff
 
         inPointSlipLeftButton.Enabled = onOrOff
-        inPointClearButton.Enabled = onOrOff
         inPointButton.Enabled = onOrOff
         inPointSlipRightButton.Enabled = onOrOff
 
-        clearAllPointsButton.Enabled = onOrOff
-
         outPointSlipLeftButton.Enabled = onOrOff
-        outPointClearButton.Enabled = onOrOff
         outPointButton.Enabled = onOrOff
         outPointSlipRightButton.Enabled = onOrOff
 
         speedSlider.Enabled = onOrOff
-        speed0Button.Enabled = onOrOff
-        speed25Button.Enabled = onOrOff
-        speed50Button.Enabled = onOrOff
-        speed75Button.Enabled = onOrOff
-        speed100Button.Enabled = onOrOff
-        speed125Button.Enabled = onOrOff
-        speed150Button.Enabled = onOrOff
-        speed175Button.Enabled = onOrOff
-        speed200Button.Enabled = onOrOff
+        speedDownButton.Enabled = onOrOff
+        speedUpButton.Enabled = onOrOff
 
-        playlistWindow.clearEventsButton.Enabled = onOrOff
-        playlistWindow.addEventButton.Enabled = onOrOff
+        addEventButton.Enabled = onOrOff
 
         If onOrOff = True Then
-            If playlistWindow.eventsList.SelectedItems.Count > 0 Then
-                playlistWindow.modifyEventButton.Enabled = True ' activate the Modify Event button if we have something selected
+            If eventsList.SelectedItems.Count > 0 Then
+                modifyEventButton.Enabled = True ' activate the Modify Event button if we have something selected
             End If
         Else
-            playlistWindow.modifyEventButton.Enabled = False ' turn the Modify Event button off
+            modifyEventButton.Enabled = False ' turn the Modify Event button off
         End If
     End Sub
 
     Public Sub switchToOffMode()
         cancelRandomization()
 
-        loopModeButton.Text = "Off"
-        loopModeButton.BackColor = Color.FromArgb(255, 255, 225)
+        loopModeButton.Text = "OFF"
+        loopModeButton.BackColor = Color.FromArgb(42, 42, 42)
+        loopModeButton.ForeColor = Color.White
+        loopModeButton.FlatAppearance.BorderColor = Color.FromArgb(85, 85, 85)
 
         switchEditingControls()
         If osdOnLoopModeChange Then SendOSD("Loop Mode: Off")
@@ -1106,19 +1043,23 @@ Public Class mainWindow
     Public Sub switchToLoopMode()
         cancelRandomization()
 
-        loopModeButton.Text = "Loop Mode"
-        loopModeButton.BackColor = Color.FromArgb(176, 246, 176)
+        loopModeButton.Text = "LOOP"
+        loopModeButton.BackColor = Color.FromArgb(42, 74, 58)
+        loopModeButton.ForeColor = Color.FromArgb(136, 255, 204)
+        loopModeButton.FlatAppearance.BorderColor = Color.FromArgb(68, 170, 136)
 
         switchEditingControls()
         If osdOnLoopModeChange Then SendOSD("Loop Mode: Loop")
     End Sub
 
     Public Sub switchToPlaylistMode()
-        If playlistWindow.eventsList.Items.Count > 0 Then
+        If eventsList.Items.Count > 0 Then
             cancelRandomization()
 
-            loopModeButton.Text = "Playlist Mode"
-            loopModeButton.BackColor = Color.FromArgb(255, 168, 130)
+            loopModeButton.Text = "PLAYLIST"
+            loopModeButton.BackColor = Color.FromArgb(42, 42, 90)
+            loopModeButton.ForeColor = Color.FromArgb(170, 170, 255)
+            loopModeButton.FlatAppearance.BorderColor = Color.FromArgb(102, 102, 170)
 
             switchEditingControls(False)
             If osdOnLoopModeChange Then SendOSD("Loop Mode: Playlist")
@@ -1126,21 +1067,23 @@ Public Class mainWindow
     End Sub
 
     Public Sub switchToShuffleMode()
-        Dim totalEvents = playlistWindow.eventsList.Items.Count ' get the total number of events currently in the playlist
+        Dim totalEvents = eventsList.Items.Count ' get the total number of events currently in the playlist
 
         If totalEvents > 0 Then
             ReDim randomNumberList(0) ' erase the values currently stored in the array (to ensure it won't have any extra values)
 
-            loopModeButton.Text = "Shuffle Mode"
-            loopModeButton.BackColor = Color.FromArgb(133, 231, 240)
+            loopModeButton.Text = "SHUFFLE"
+            loopModeButton.BackColor = Color.FromArgb(74, 42, 74)
+            loopModeButton.ForeColor = Color.FromArgb(255, 170, 255)
+            loopModeButton.FlatAppearance.BorderColor = Color.FromArgb(170, 102, 170)
 
             switchEditingControls(False) ' turn off editing controls, so you can't use them in Shuffle mode
 
             randomNumberList = Enumerable.Range(0, totalEvents).OrderBy(Function(r) RNG.Next()).Take(totalEvents + 1).ToArray ' re-initialize the array
 
             ' Force the playlist to start at the beginning of the random order
-            playlistWindow.currentPlayingEvent = -1
-            playlistWindow.loadPrevNextEvent(1)
+            currentPlayingEvent = -1
+            loadPrevNextEvent(1)
 
             If osdOnLoopModeChange Then SendOSD("Loop Mode: Shuffle")
         End If
@@ -1148,7 +1091,7 @@ Public Class mainWindow
 
     Public Sub cancelRandomization()
         ReDim randomNumberList(0)
-        If loopModeButton.Text = "Shuffle Mode" Then playlistWindow.currentPlayingEvent = playlistWindow.actualPlayingEvent ' get the current event from the currently playing random event
+        If loopModeButton.Text = "SHUFFLE" Then currentPlayingEvent = actualPlayingEvent ' get the current event from the currently playing random event
     End Sub
 
     Private Sub switchCurrentAndRemaining()
@@ -1164,19 +1107,17 @@ Public Class mainWindow
     Private Sub changeAlwaysOnTop()
         If Me.TopMost Then
             Me.TopMost = False
-            playlistWindow.TopMost = False
-            alwaysOnTopButton.Text = "Not Topmost"
-            alwaysOnTopButton.BackColor = Color.FromArgb(209, 209, 209)
+            alwaysOnTopButton.Text = ChrW(&HE77A)
+            alwaysOnTopButton.BackColor = Color.FromArgb(51, 51, 51)
         Else
             Me.TopMost = True
-            playlistWindow.TopMost = True
-            alwaysOnTopButton.Text = "Always on Top"
-            alwaysOnTopButton.BackColor = Color.FromArgb(183, 186, 243)
+            alwaysOnTopButton.Text = ChrW(&HE718)
+            alwaysOnTopButton.BackColor = Color.FromArgb(42, 42, 90)
         End If
     End Sub
 
     ' ======================================================================================
-    ' ================= SLIP CLICK/HOLD DONW HANDLERS ======================================
+    ' ================= SLIP CLICK/HOLD DOWN HANDLERS ======================================
     ' ======================================================================================
 
     Private Sub inPointSlipLeftButton_Click(sender As Object, e As EventArgs) Handles inPointSlipLeftButton.Click
@@ -1248,9 +1189,8 @@ Public Class mainWindow
             outTF.Text = Nothing ' clear the OUT point without resetting to end-of-video
         End If
 
-        playlistWindow.checkAgainstCurrentPlayingEvent()
+        checkAgainstCurrentPlayingEvent()
 
-        Log("Set IN Point: " & inTF.Text)
         If osdOnInPoint Then SendOSD("In Point")
     End Sub
 
@@ -1259,25 +1199,24 @@ Public Class mainWindow
         Threading.Thread.Sleep(50) ' wait for position response to arrive
         outTF.Text = NumberToTimeString(currentPosition + outPointOffset)
 
-        playlistWindow.checkAgainstCurrentPlayingEvent()
+        checkAgainstCurrentPlayingEvent()
 
-        Log("Set OUT Point: " & outTF.Text)
         If osdOnOutPoint AndAlso Not autoCreateEventOnOut Then SendOSD("Out Point")
 
-        If autoCreateEventOnOut Then playlistWindow.addEvent()
+        If autoCreateEventOnOut Then addEvent()
     End Sub
 
     Public Sub clearInPoint()
         inTF.Text = "0:00"
 
-        playlistWindow.checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
+        checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
     End Sub
 
     Public Sub clearOutPoint()
         SendMessage(CMD_SEND.CMD_GETNOWPLAYING)
         outTF.Text = NumberToTimeString(currentDuration + 0.5 - outPointOffset)
 
-        playlistWindow.checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
+        checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
     End Sub
 
     Private Sub slipPoint(ByVal thePoint As Integer, Optional slipAmount As Double = -1)
@@ -1304,7 +1243,7 @@ Public Class mainWindow
             SendMessage(CMD_SEND.CMD_SETPOSITION, CStr((newPoint - 0.5 - loopPreviewLength)))
         End If
 
-        playlistWindow.checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
+        checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
     End Sub
 
     ' ======================================================================================
@@ -1370,44 +1309,1711 @@ Public Class mainWindow
             speedSlider.Value = theSpeed
         End If
 
-        speed100Button.Text = speedSlider.Value & "%"
+        speedValueLabel.Text = speedSlider.Value & "%"
         SendMessage(CMD_SEND.CMD_SETSPEED, Convert.ToString(speedSlider.Value / 100))
     End Sub
 
-    Private Sub speed0Button_Click(sender As Object, e As EventArgs) Handles speed0Button.Click
-        setSpeed(0)
+
+    Private Sub speedDownButton_Click(sender As Object, e As EventArgs) Handles speedDownButton.Click
+        Dim newVal As Integer = speedSlider.Value - 5
+        If newVal < 0 Then newVal = 0
+        speedSlider.Value = newVal
+        setSpeed()
     End Sub
 
-    Private Sub speed25Button_Click(sender As Object, e As EventArgs) Handles speed25Button.Click
-        setSpeed(25)
+    Private Sub speedUpButton_Click(sender As Object, e As EventArgs) Handles speedUpButton.Click
+        Dim newVal As Integer = speedSlider.Value + 5
+        If newVal > 200 Then newVal = 200
+        speedSlider.Value = newVal
+        setSpeed()
     End Sub
 
-    Private Sub speed50Button_Click(sender As Object, e As EventArgs) Handles speed50Button.Click
-        setSpeed(50)
+    ' ======================================================================================
+    ' ================= FIX / FIX TOOL HANDLERS ============================================
+    ' ======================================================================================
+
+    Private Sub fixButton_Click(sender As Object, e As EventArgs) Handles fixButton.Click
+        If currentLooperFile Is Nothing OrElse currentLooperFile = "" Then
+            MessageBox.Show(Me, "No .looper file is currently loaded.", "Fix Paths", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        ' Check for broken paths
+        Dim brokenPaths As New List(Of String)
+        For Each item As ListViewItem In eventsList.Items
+            If item.BackColor = errorColor Then
+                brokenPaths.Add(item.SubItems(7).Text)
+            End If
+        Next
+
+        If brokenPaths.Count = 0 Then
+            MessageBox.Show(Me, "All file paths are valid. Nothing to fix.", "Fix Paths", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
+        ' Check if Everything is available
+        Try
+            If Not EverythingAPI.IsEverythingAvailable() Then
+                Dim startResult = MessageBox.Show(Me, "Everything search is not running. Would you like to start it?", "Fix Paths", MessageBoxButtons.YesNo, MessageBoxIcon.Question)
+                If startResult = DialogResult.Yes Then
+                    Try
+                        Dim everythingPath = IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Everything", "Everything.exe")
+                        If Not IO.File.Exists(everythingPath) Then
+                            everythingPath = IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Everything", "Everything.exe")
+                        End If
+                        If IO.File.Exists(everythingPath) Then
+                            Process.Start(everythingPath, "-minimized")
+                            Threading.Thread.Sleep(2000)
+                        Else
+                            MessageBox.Show(Me, "Could not find Everything.exe. Please install Everything (voidtools.com) to use Fix.", "Fix Paths", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                            Return
+                        End If
+                    Catch ex As Exception
+                        MessageBox.Show(Me, "Could not start Everything: " & ex.Message, "Fix Paths", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                        Return
+                    End Try
+                Else
+                    Return
+                End If
+            End If
+        Catch ex As DllNotFoundException
+            MessageBox.Show(Me, "Everything64.dll not found. Please install Everything (voidtools.com) or place Everything64.dll next to Looper 2.exe.", "Fix Paths", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Log("Fix: Everything64.dll not found")
+            Return
+        Catch ex As Exception
+            MessageBox.Show(Me, "Error checking Everything: " & ex.Message, "Fix Paths", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Log("Fix: Error - " & ex.Message)
+            Return
+        End Try
+
+        ' Show confirm dialog
+        Dim confirmMsg = brokenPaths.Count & " broken path(s) found. Search for correct locations using Everything?" & vbCrLf & vbCrLf
+        For i = 0 To Math.Min(brokenPaths.Count - 1, 9)
+            confirmMsg &= "• " & IO.Path.GetFileName(brokenPaths(i)) & vbCrLf
+        Next
+        If brokenPaths.Count > 10 Then confirmMsg &= "... and " & (brokenPaths.Count - 10) & " more"
+
+        If MessageBox.Show(Me, confirmMsg, "Fix Broken Paths?", MessageBoxButtons.YesNo, MessageBoxIcon.Question) <> DialogResult.Yes Then Return
+
+        ' Run the fix
+        Log("Fix: Starting fix for " & brokenPaths.Count & " broken paths")
+        Dim result = LooperFixer.FixLooperFile(currentLooperFile, True)
+        Log("Fix: Completed - " & result.FixedEvents & " fixed, " & result.UnfixableEvents & " failed")
+
+        ' Reload the file
+        loadLooperFile(True, currentLooperFile)
     End Sub
 
-    Private Sub speed75Button_Click(sender As Object, e As EventArgs) Handles speed75Button.Click
-        setSpeed(75)
+    Private Sub fixToolButton_Click(sender As Object, e As EventArgs) Handles fixToolButton.Click
+        Dim toolPath = IO.Path.Combine(Application.StartupPath, "LooperFixTool.exe")
+        If IO.File.Exists(toolPath) Then
+            Log("Fix-Tool: Launching LooperFixTool.exe")
+            Process.Start(toolPath)
+        Else
+            MessageBox.Show(Me, "LooperFixTool.exe not found in application folder.", "Fix Tool", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        End If
     End Sub
 
-    Private Sub speed100Button_Click(sender As Object, e As EventArgs) Handles speed100Button.Click
-        setSpeed(100)
+    ' ======================================================================================
+    ' ================= PLAYLIST / EVENT LIST FUNCTIONS (merged from playlistWindow) ========
+    ' ======================================================================================
+
+    ' Show a MessageBox that stays on top of MPC-HC, then restore previous Z-order
+    Private Function ShowTopMostMessageBox(msg As String, title As String, buttons As MessageBoxButtons, icon As MessageBoxIcon, defaultBtn As MessageBoxDefaultButton) As DialogResult
+        Dim wasTopMost As Boolean = Me.TopMost ' remember previous state
+        Me.TopMost = True
+        Me.Activate()
+        Dim result = MessageBox.Show(Me, msg, title, buttons, icon, defaultBtn)
+        Me.TopMost = wasTopMost ' restore previous TopMost state
+        If MPCHandle <> IntPtr.Zero Then SetForegroundWindow(MPCHandle) ' give focus back to MPC-HC
+        Return result
+    End Function
+
+    Private Sub eventsList_SelectedIndexChanged(sender As Object, e As EventArgs) Handles eventsList.SelectedIndexChanged
+        selectedEventsButtonTriggers()
     End Sub
 
-    Private Sub speed125Button_Click(sender As Object, e As EventArgs) Handles speed125Button.Click
-        setSpeed(125)
+    Private Sub selectedEventsButtonTriggers()
+        If eventsList.SelectedItems.Count > 0 Then
+            saveButton.Enabled = True ' Enable the save button (so you can save the subset of events)
+
+            If getMode() Then ' if we're in OFF or Loop mode
+                If eventsList.SelectedItems.Count = 1 Then
+                    modifyEventButton.Text = "Modify"
+                    modifyEventButton.Enabled = True
+                Else ' if we have 2 contiginous events selected, let's merge 'em
+                    If eventsList.SelectedItems(0).Index + eventsList.SelectedItems.Count = eventsList.SelectedItems(eventsList.SelectedItems.Count - 1).Index + 1 Then
+                        modifyEventButton.Text = "Merge"
+                        modifyEventButton.Enabled = True
+                    Else ' if we have scattered events, then disable the merging
+                        modifyEventButton.Text = "Modify"
+                        modifyEventButton.Enabled = False
+                    End If
+                End If
+            Else ' if we're not in OFF or Loop mode
+                modifyEventButton.Text = "Modify"
+                modifyEventButton.Enabled = False
+            End If
+
+            If loopModeButton.Text <> "SHUFFLE" Then
+                deleteEventButton.Enabled = True ' if we're not in Shuffle mode, then allow deleting the selected event
+            Else
+                deleteEventButton.Enabled = False ' don't allow deleting events in Shuffle mode
+            End If
+        Else ' if we have nothing selected, change the text for the modify button, but turn it off
+            modifyEventButton.Text = "Modify"
+            modifyEventButton.Enabled = False
+            deleteEventButton.Enabled = False
+
+            If isModified = False Then
+                saveButton.Enabled = False ' if we haven't modified anything, then disallow this
+            Else
+                saveButton.Enabled = True ' otherwise make it enabled
+            End If
+        End If
     End Sub
 
-    Private Sub speed150Button_Click(sender As Object, e As EventArgs) Handles speed150Button.Click
-        setSpeed(150)
+    Private Sub eventsList_MouseDoubleClick(sender As Object, e As MouseEventArgs) Handles eventsList.MouseDoubleClick
+        switchToLoopMode() ' double clicking an item returns to Loop mode ALWUS
+        loadEvent(eventsList.SelectedItems(0).Index) ' load the currently selected event
     End Sub
 
-    Private Sub speed175Button_Click(sender As Object, e As EventArgs) Handles speed175Button.Click
-        setSpeed(175)
+    Public Function unInitialize(Optional forceQuit As Boolean = False) As Integer
+        SendMessage(CMD_SEND.CMD_PAUSE) ' pause the player when going to the Quit looper window
+        isQuitting = True ' set this to true to cause the Threads to skip checking position/hotkeys for now
+
+        If isModified = True Then ' if isModified is true, then ask to save first
+            If skipSaveConfirmations Then
+                If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                    autoSaveCurrentFile() ' auto-save silently before quitting
+                End If
+                Return DialogResult.No ' skip the dialog entirely
+            End If
+
+            Dim MsgBoxMsg As String
+            Dim MsgBoxButtons As MessageBoxButtons
+
+            If forceQuit = False Then ' if we're just quitting normally (MPC-HC is still active and running)
+                MsgBoxButtons = MessageBoxButtons.YesNoCancel
+
+                MsgBoxMsg = "Do you want to save the current playlist before quitting?" _
+                        & vbCrLf & vbCrLf & "Click Yes to save and quit" _
+                        & vbCrLf & "Click No to quit without saving" _
+                        & vbCrLf & "Click Cancel to go back to Looper without quitting"
+            Else ' if we're being forced to quit (MPC-HC has closed, and we're quitting regardless)
+                MsgBoxButtons = MessageBoxButtons.YesNo
+
+                MsgBoxMsg = "Do you want to save the current playlist before quitting?" _
+                        & vbCrLf & vbCrLf & "Click Yes to save and quit" _
+                        & vbCrLf & "Click No to quit without saving"
+            End If
+
+            Dim returnValue = ShowTopMostMessageBox(MsgBoxMsg,
+                                              "Save Playlist Before Quitting?",
+                                              MsgBoxButtons,
+                                              MessageBoxIcon.Question,
+                                              MessageBoxDefaultButton.Button1)
+
+            If returnValue = DialogResult.Yes Then
+                Return saveLooperFile() ' save the looper file
+            Else ' if the result is "No" or "Cancel", then just return that value
+                Return returnValue
+            End If
+        Else ' if we're not set to "isModified", then just quit out
+            Return DialogResult.No ' return a value, so we don't get an exception
+        End If
+    End Function
+
+    Public Sub saveLastPlayedFile()
+        Try
+            Dim fileReader As String
+            fileReader = My.Computer.FileSystem.ReadAllText(INIFile)
+
+            Dim autoloadLastLooperVal As String = betweenTheLines(fileReader, "autoloadLastLooper=", vbCrLf, Nothing) ' should we launch the last looper file when closed?
+
+            If autoloadLastLooperVal <> Nothing Then ' if the preference is "Nothing" then we're not set to enable it
+                Dim startOffset = Strings.InStr(fileReader, "autoloadLastLooper=") ' the beginning of the old preference in the INI file
+                Dim endOffset = Strings.InStr(startOffset, fileReader, vbCrLf) ' the end of the line above ^^
+
+                Dim writingString = Strings.Left(fileReader, startOffset - 1) ' the INI file before the above preference
+                writingString += "autoloadLastLooper=" & currentLooperFile & "|" & currentPlayingEvent & vbCrLf ' the new preference to be set
+                writingString += Strings.Mid(fileReader, endOffset + 2) ' the rest of the INI file after that preference
+
+                System.IO.File.WriteAllText(INIFile, writingString) ' write the "new" INI file
+            End If
+        Catch ex As Exception
+        End Try
     End Sub
 
-    Private Sub speed200Button_Click(sender As Object, e As EventArgs) Handles speed200Button.Click
-        setSpeed(200)
+    ' ======================================================================================
+    ' ================= FILESYSTEM FUNCTIONS (playlist) ====================================
+    ' ======================================================================================
+
+    Private Sub setIsModified(ByVal setModified As Integer)
+        If setModified = 1 Then ' if we've made changes, then draw a * in the title of the playlist to show that
+            isModified = True ' we've modified something
+            saveButton.Enabled = True
+
+            If currentLooperFile = Nothing Then ' if we have nothing loaded, then we're in "Untitled" mode
+                If Me.Text <> "Looper 2 - Untitled *" Then
+                    Me.Text = "Looper 2 - Untitled *"
+                End If
+            Else ' if something IS loaded, then show that
+                If Me.Text <> "Looper 2 - " & My.Computer.FileSystem.GetFileInfo(currentLooperFile).Name.ToString & " *" Then
+                    Me.Text = "Looper 2 - " & My.Computer.FileSystem.GetFileInfo(currentLooperFile).Name.ToString & " *"
+                End If
+            End If
+        Else ' if we haven't made changes, then DO NOT draw a * in the title of the playlist to show that
+            isModified = False ' we haven't modified anything
+            saveButton.Enabled = False
+
+            If currentLooperFile = Nothing Then ' if we have nothing loaded, then we're in "Untitled" mode
+                If Me.Text <> "Looper 2 - Untitled" Then
+                    Me.Text = "Looper 2 - Untitled"
+                End If
+            Else ' if something IS loaded, then show that
+                If Me.Text <> "Looper 2 - " & My.Computer.FileSystem.GetFileInfo(currentLooperFile).Name.ToString Then
+                    Me.Text = "Looper 2 - " & My.Computer.FileSystem.GetFileInfo(currentLooperFile).Name.ToString
+                End If
+            End If
+        End If
+    End Sub
+
+    Public Sub loadLooperFile(Optional clearEventList As Boolean = True, Optional looperFile As String = Nothing, Optional eventToPlay As Integer = -1)
+        SendMessage(CMD_SEND.CMD_PAUSE) ' pause the player when going to the Load Looper window
+
+        Dim confirmSave As Integer = DialogResult.No ' this doesn't specifically NEED to be no, it just needs to NOT be cancel
+
+        If clearEventList = True Then ' if we're not loading a brand-new looper file
+            If isModified = True Then ' and if the list has been modified
+                If skipSaveConfirmations Then
+                    If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                        autoSaveCurrentFile() ' auto-save silently
+                    End If
+                    confirmSave = DialogResult.No ' skip dialog
+                Else
+                    ' then ask if we want to save this list first before overwriting it
+                    confirmSave = ShowTopMostMessageBox("Do you want to save the current playlist before opening another .looper file?" _
+                                     & vbCrLf & vbCrLf & "Click Yes to save" _
+                                     & vbCrLf & "No to continue without saving" _
+                                     & vbCrLf & "Cancel to go back to Looper without doing anything",
+                                                  "Save Playlist Before Opening?",
+                                                  MessageBoxButtons.YesNoCancel,
+                                                  MessageBoxIcon.Question,
+                                                  MessageBoxDefaultButton.Button1)
+                End If
+
+                If confirmSave = DialogResult.Yes Then
+                    confirmSave = saveLooperFile() ' save the looper file (or cancel the process, either by dialog or by file-choose-dialog)
+                End If
+            End If
+        End If
+
+        If confirmSave <> DialogResult.Cancel Then ' as long as you didn't click 'cancel' above, then...
+            If looperFile = Nothing Then ' if we haven't specified a looper file to force opening, then ask for one
+                Dim openDialogTitle As String
+
+                If clearEventList = True Then
+                    openDialogTitle = "Load a .looper File"
+                Else
+                    openDialogTitle = "Import a .looper File into the Current Playlist"
+                End If
+
+                Using looperFileDialog As New OpenFileDialog With {
+                    .Title = openDialogTitle,
+                    .Filter = "Looper files|*.looper",
+                    .InitialDirectory = If(defaultLooperSavePath IsNot Nothing, defaultLooperSavePath, "")
+                }
+
+                    If looperFileDialog.ShowDialog = DialogResult.OK Then ' if we cancelled, this value will remain Nothing, and then nothing below will trigger
+                        looperFile = looperFileDialog.FileName ' if we didn't cancel, then open the file selected
+                    End If
+                End Using
+            End If
+
+            If looperFile <> Nothing Then ' if we agreed to load a new file, then load it... otherwise, do nothing!
+                currentLooperFile = looperFile ' if you choose a new file, then load that name in, but if not, then don't do anything else
+
+                If clearEventList = True Then
+                    totalNumberOfEvents = 100 ' reset the first index to 100
+
+                    currentPlayingEvent = -1 ' we're not playing an event
+                    actualPlayingEvent = -1 ' we're NOT playing an event
+
+                    inSearchMode = False ' we're not in search mode t'neither
+                    currentSearchPlayingEvent = -1 ' WE'RE NOT PLAYING AN EVENT! (and not in search mode)
+                    ReDim eventsListArray(0, 0) ' delete the master array if it exists, because we're going to need to recreate it anyway
+
+                    cancelRandomization() ' clear out the randomized list
+                    eventsList.Items.Clear() ' remove all of the current events from the list
+
+                    setIsModified(0) ' we're not modified, so sort that all out
+                End If
+
+                Dim fileReader As String
+                fileReader = My.Computer.FileSystem.ReadAllText(currentLooperFile)
+
+                Dim eventListArray() As String = Split(fileReader, vbCrLf) ' read all of the events into an array, split at line endings
+
+                For a As Integer = 0 To eventListArray.Length - 1
+                    If eventListArray(a) <> "" Then ' if the current read isn't a blank space (the extra line after 99% of .looper files)
+                        Dim currentEvent() As String = Split(eventListArray(a), "|")
+                        addEventFromFile(currentEvent(0), currentEvent(1), currentEvent(2), currentEvent(3), a)
+                    End If
+                Next
+
+                fileReader = Nothing ' un-initialize the variable
+
+                If clearEventList = True Then ' if we're regularly loading a file, then do these things
+                    If autoplayFirstEvent = True Then
+                        If eventsList.Items.Count > 1 Then
+                            loadPrevNextEvent(1) ' jump to the first playable event (instead of loadEvent(), do loadPrevNextEvent() to seek to the next "good" event)
+                        Else
+                            loadEvent(0, True) ' we only have one event to load, so try to load that...
+                        End If
+                    Else ' if we're not set to autoplay the first event, but we have this option (auto-playing after leaving dialogs) turned on...
+                        If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we're out of the dialog, so start playing
+                    End If
+
+                    If dontForceLooperModeonOpen = False Then
+                        switchToLoopMode() ' if we're not set to not automatically go to looper mode, then switch it
+                    Else
+                        If loopModeButton.Text = "SHUFFLE" Then
+                            switchToShuffleMode() ' force the shuffle mode generator to re-generate the randomized list
+                        End If
+                    End If
+
+                    Dim totalEventsToCheck As Integer ' the total number of events the .looper file specified
+
+                    If eventListArray(eventListArray.Length - 1) = "" Then
+                        totalEventsToCheck = eventListArray.Length - 1 ' if the last item in the looper file is "", then subtract that from the events check
+                    Else
+                        totalEventsToCheck = eventListArray.Length ' otherwise, the events check is correct
+                    End If
+
+                    If eventsList.Items.Count <> totalEventsToCheck Then ' we have less items in the events list than we did in the .looper file, so something's wrong
+                        MessageBox.Show((totalEventsToCheck - eventsList.Items.Count) & " event(s) stored in this .looper file have file paths that aren't defined (blank), so those events weren't added to the playlist.",
+                                             "Warning!",
+                                             MessageBoxButtons.OK,
+                                             MessageBoxIcon.Warning,
+                                             MessageBoxDefaultButton.Button1)
+                    End If
+
+                Else ' else, if we're merging .looper files, do these things...
+                    If Not getMode() Then ' we're in Shuffle or Playlist modes
+                        switchToLoopMode() ' force switch to Loop Mode
+                        currentPlayingEvent += 1
+                    End If
+
+                    currentLooperFile = Nothing ' we're no longer operating out of the same file, so reset this
+                    setIsModified(1)
+
+                    If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we merged a .looper into the list, so start playing again
+                End If
+
+                eventListArray = Nothing ' un-initialize the variable
+                tallyTotalList() ' calculate the time of all events in the events list
+                updateEventCountLabel()
+            Else
+                If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we cancelled loading, so start playing again
+            End If
+        Else
+            If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we cancelled loading (and saving), so start playing again
+        End If
+    End Sub
+
+    Private Function findFile(Optional specificEvent As Integer = -1) As Integer
+        Dim previousPath, pathToFind, pathName, pathExt As String
+        Dim missingEvents As New List(Of Integer)
+
+        SendMessage(CMD_SEND.CMD_PAUSE) ' force pause when checking to load events
+
+        For a As Integer = 0 To eventsList.Items.Count - 1
+            If eventsList.Items(a).BackColor = errorColor Then
+                missingEvents.Add(a) ' make a list of events that have missing paths (so we don't need to load the entire events list every time)
+            End If
+        Next
+
+        Dim findFilesPrompt As Integer = DialogResult.No ' if there's just one event, then we just need to find one, so we don't need the dialog asking
+
+        If missingEvents.Count > 1 Then
+            findFilesPrompt = ShowTopMostMessageBox("The current playlist has " & missingEvents.Count & " events that point" & vbCrLf &
+            "to file paths that can not be located." & vbCrLf & vbCrLf &
+            "Would you like to locate all of those missing files," & vbCrLf &
+            "just the current event's missing file," & vbCrLf &
+            "or skip looking for files for now?" & vbCrLf & vbCrLf &
+            "Click Yes to find missing files for the entire playlist" & vbCrLf &
+            "Click No to find only this event's missing file" & vbCrLf &
+            "Click Cancel to cancel finding missing files for now",
+                                  "Missing Files!",
+                                  MessageBoxButtons.YesNoCancel,
+                                  MessageBoxIcon.Question,
+                                  MessageBoxDefaultButton.Button1)
+
+            If findFilesPrompt = DialogResult.Yes Then
+                specificEvent = -1 ' look for all of the files and not just one specific one
+            End If
+        End If
+
+        If findFilesPrompt <> DialogResult.Cancel Then ' if we didn't cancel out of finding events (above)
+            previousPath = Nothing
+
+            For a As Integer = 0 To missingEvents.Count - 1 ' iterate through the empty paths now
+                pathToFind = eventsList.Items(missingEvents(a)).SubItems(7).Text ' the original "missing" file path
+                pathName = My.Computer.FileSystem.GetFileInfo(pathToFind).Name ' the name of the file (minus the directory)
+                pathExt = Mid(My.Computer.FileSystem.GetFileInfo(pathToFind).Extension, 2) ' the extension of the file
+
+                If specificEvent = -1 Or specificEvent = missingEvents(a) Then ' if the event we're requesting is this specific one OR isn't a specific event...
+                    If eventsList.Items(missingEvents(a)).BackColor = errorColor Then ' if this event still has an error, then...
+                        ' Set the initial directory to the missing file's original directory (or previous found path)
+                        Dim initialDir As String = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                        If previousPath IsNot Nothing Then
+                            initialDir = previousPath
+                        Else
+                            Try
+                                Dim origDir = My.Computer.FileSystem.GetFileInfo(pathToFind).DirectoryName
+                                If My.Computer.FileSystem.DirectoryExists(origDir) Then initialDir = origDir
+                            Catch
+                            End Try
+                        End If
+
+                        Using fileFind As New OpenFileDialog With {
+                           .Title = "Where is the file originally found at " & pathToFind & " now?",
+                           .InitialDirectory = initialDir,
+                           .FileName = pathName,
+                           .Filter = "Matching|" & pathName & "|" & pathExt & " Files|*." & pathExt & "|All Files|*.*"
+                            }
+
+                            If fileFind.ShowDialog = DialogResult.OK Then
+                                setIsModified(1)
+                                previousPath = My.Computer.FileSystem.GetFileInfo(fileFind.FileName).DirectoryName.ToString ' check this against the next file
+
+                                ' Get the old broken directory to fix all events sharing it
+                                Dim brokenDir As String = My.Computer.FileSystem.GetFileInfo(pathToFind).DirectoryName
+
+                                For b As Integer = 0 To missingEvents.Count - 1 ' scan through the rest of the missing items to see if paths are restored
+                                    If eventsList.Items(missingEvents(b)).SubItems(7).Text = pathToFind Then ' if this event matches the exact "missing" file path
+                                        eventsList.Items(missingEvents(b)).SubItems(7).Text = fileFind.FileName ' replace it with the newly found file
+                                        eventsList.Items(missingEvents(b)).BackColor = foundColor
+                                        eventsList.Items(missingEvents(b)).ForeColor = Color.White
+                                    Else ' if this event doesn't match the same file, check if it's in the same broken directory
+                                        Dim otherPathToFind As String = eventsList.Items(missingEvents(b)).SubItems(7).Text
+                                        Dim otherPathName As String = My.Computer.FileSystem.GetFileInfo(otherPathToFind).Name
+                                        Dim otherPathDir As String = My.Computer.FileSystem.GetFileInfo(otherPathToFind).DirectoryName
+
+                                        ' Fix all events that share the same broken directory
+                                        If My.Computer.FileSystem.GetFileInfo(previousPath & "\" & otherPathName).Exists Then
+                                            eventsList.Items(missingEvents(b)).SubItems(7).Text = previousPath & "\" & otherPathName
+                                            eventsList.Items(missingEvents(b)).BackColor = foundColor
+                                            eventsList.Items(missingEvents(b)).ForeColor = Color.White
+                                        End If
+                                    End If
+                                Next
+                            Else ' we didn't find a result, or cancelled, so pass that back to the loadEvent() Sub
+                                If specificEvent <> -1 Or a = missingEvents.Count - 1 Then ' if we're either looking at a single event or the last event
+                                    Return DialogResult.Cancel ' we cancelled out of finding this file
+                                End If
+                            End If
+                        End Using
+                    End If
+                End If
+            Next
+        End If
+
+        Return findFilesPrompt ' if we cancelled, let's let the loadEvent() procedure know it
+    End Function
+
+    Public Function saveLooperFile(Optional saveSubset As Boolean = False) As Integer
+        If saveSubset = False And isModified = False Then
+            Return DialogResult.Cancel ' if we're not modified, and we're saving the entire file, quit out (as there's nothing to save)
+        End If
+
+        Dim checkOverwrite As Integer = DialogResult.Ignore
+
+        If eventsList.Items.Count > 0 Then ' if we have nothing in the playlist, there's no reason to save it~!
+            SendMessage(CMD_SEND.CMD_PAUSE) ' pause the player when going to the Save Looper window
+
+            Dim savefile As String = Nothing
+            Dim savingList As New List(Of Integer)
+
+            If saveSubset = True Then ' if you want to save the entire playlist, then just add all the items to the list to save
+                For a As Integer = 0 To eventsList.SelectedIndices.Count - 1
+                    savingList.Add(eventsList.SelectedIndices(a))
+                Next
+            Else ' if we only want to save a few of them, then just add those ones
+                For a As Integer = 0 To eventsList.Items.Count - 1
+                    savingList.Add(a)
+                Next
+            End If
+
+            If currentLooperFile = Nothing Or saveSubset = True Then
+                savefile = returnSaveFile(saveSubset) ' if saveSubset is true, this will change the title on the Save... prompt
+            Else
+                If skipSaveConfirmations Then
+                    checkOverwrite = DialogResult.Yes ' skip the overwrite confirmation
+                    savefile = currentLooperFile
+                Else
+                    checkOverwrite = ShowTopMostMessageBox("Are you sure you want to overwrite the current .looper file?" & vbCrLf & vbCrLf &
+                                                "Choose Yes to overwrite the current .looper file" & vbCrLf &
+                                                "No to save to a New .looper file" & vbCrLf &
+                                                "Or Cancel to abort saving completely",
+                                                  "Overwrite Current File?",
+                                                  MessageBoxButtons.YesNoCancel,
+                                                  MessageBoxIcon.Question,
+                                                  MessageBoxDefaultButton.Button1)
+
+                    If checkOverwrite = DialogResult.Yes Then
+                        savefile = currentLooperFile
+                    ElseIf checkOverwrite = DialogResult.No Then
+                        savefile = returnSaveFile()
+                    ElseIf checkOverwrite = DialogResult.Cancel Then
+                        ' don't do anything, because we chose to cancel, so saveFile = Nothing
+                    End If
+                End If
+            End If
+
+            If savefile <> Nothing Then
+                Dim writeString As String
+
+                ' Write the file using the Streamwriter process, to save to hidden files (if we come across those) -
+                ' The other method (the normal, one-code-line method) comes up with an AccessException when we try
+                ' to do that, so we need to do it this way (the *proper* way, innit?)
+                Using writeFile As IO.FileStream = IO.File.Open(savefile, IO.FileMode.OpenOrCreate, IO.FileAccess.Write)
+                    Using writer As IO.StreamWriter = New IO.StreamWriter(writeFile, System.Text.Encoding.Unicode)
+                        For a As Integer = 0 To savingList.Count - 1
+                            writeString = Nothing
+
+                            If eventsList.Items(savingList(a)).SubItems(2).Text <> "100" Then ' if the speed isn't 100, then add that to the name in the looper file
+                                writeString = writeString & "<S:" & eventsList.Items(savingList(a)).SubItems(2).Text & ">"
+                            End If
+
+                            If eventsList.Items(savingList(a)).SubItems(3).Text <> "1" Then ' if the repeats are more than 1, then add that to the name in the looper file
+                                writeString = writeString & "<L:" & eventsList.Items(savingList(a)).SubItems(3).Text & ">"
+                            End If
+
+
+                            writeString = writeString & eventsList.Items(savingList(a)).SubItems(1).Text & "|" &
+                            eventsList.Items(savingList(a)).SubItems(4).Text & "|" &
+                            eventsList.Items(savingList(a)).SubItems(5).Text & "|" &
+                            eventsList.Items(savingList(a)).SubItems(7).Text
+
+                            writer.WriteLine(writeString) ' write this specific event to the .looper file
+                        Next
+
+                        writeFile.SetLength(writeFile.Position) ' set the EOF
+                    End Using
+
+                    writeFile.Close() ' close file for writing
+                End Using
+
+                If isQuitting = False Then
+                    If saveSubset = False Then ' if we are saving or saving a new Looper file, then show it - otherwise, you just saved a subclip
+                        currentLooperFile = savefile ' change the current looper file name
+                        setIsModified(0) ' we saved a file, so we're no longer in modified state
+                        If osdOnSave Then SendOSD("Looper Saved")
+
+                        For a As Integer = 0 To eventsList.Items.Count - 1
+                            If eventsList.Items(a).BackColor <> errorColor Then ' only if the events aren't red (missing)
+                                eventsList.Items(a).BackColor = foundColor
+                                eventsList.Items(a).ForeColor = Color.White
+                            End If
+
+                            eventsList.Items(a).SubItems(0).Text = CStr(100 + a) ' re-organize the current order as the "correct" order
+                            eventsList.Items(a).Selected = False ' de-select this item when re-saving it
+                        Next
+                    Else
+                        Dim loadSubset = ShowTopMostMessageBox("You just saved a selection of events to a new .looper file." & vbCrLf &
+                                            "Would you like to open that new file?" & vbCrLf & vbCrLf &
+                                            "Choose Yes to open the new .looper file" & vbCrLf &
+                                            "Choose No to continue using the current file",
+                                              "Open Looper file?",
+                                              MessageBoxButtons.YesNo,
+                                              MessageBoxIcon.Question,
+                                              MessageBoxDefaultButton.Button2)
+
+                        If loadSubset = DialogResult.Yes Then
+                            loadLooperFile(True, savefile)
+                        End If
+                    End If
+                End If
+
+                If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we finished saving, so start playing again
+            Else
+                checkOverwrite = DialogResult.Cancel
+                If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we cancelled saving, so start playing again
+            End If
+        End If
+
+        Return checkOverwrite
+    End Function
+
+    Private Function returnSaveFile(Optional saveSubset As Boolean = False) As String
+        Dim saveTitle As String
+
+        If saveSubset = True Then
+            saveTitle = "Save Current Selection of Events as New Looper File..."
+        Else
+            saveTitle = "Save New Looper file..."
+        End If
+
+        Dim saveFileDialog As New SaveFileDialog With {
+            .AddExtension = True,
+            .DefaultExt = ".looper",
+            .OverwritePrompt = True,
+            .Filter = "Looper files|*.looper",
+            .Title = saveTitle
+        }
+
+        ' ----------------- CHECK TO SAVE SIDECAR FILE -----------------
+        Dim filesMatching As Integer = 1
+        Dim checkAgainst As String = eventsList.Items(0).SubItems(7).Text ' the file path of the first event
+
+        For a As Integer = 1 To eventsList.Items.Count - 1
+            If eventsList.Items(a).SubItems(7).Text = checkAgainst Then filesMatching += 1 ' if the filename is the same in this event, then increment counter
+        Next
+
+        If filesMatching = eventsList.Items.Count Then ' if the filenames are the same for every event, then default to saving a sidecar file
+            saveFileDialog.FileName = My.Computer.FileSystem.GetFileInfo(checkAgainst).Name & ".looper"
+            saveFileDialog.InitialDirectory = My.Computer.FileSystem.GetFileInfo(checkAgainst).Directory.ToString
+        ElseIf defaultLooperSavePath IsNot Nothing AndAlso defaultLooperSavePath <> "" Then
+            saveFileDialog.InitialDirectory = defaultLooperSavePath ' use the default save path from preferences
+        End If
+
+        ' ----------------- SHOW THE DIALOG AND RETURN -----------------
+        If saveFileDialog.ShowDialog(Me) = DialogResult.OK Then
+            Dim result = saveFileDialog.FileName
+            saveFileDialog.Dispose()
+            Return result
+        Else
+            saveFileDialog.Dispose()
+            Return Nothing
+        End If
+    End Function
+
+    Private Function checkAlternateFileExists(ByVal filePath As String) As String
+        Dim checkFile = My.Computer.FileSystem.GetFileInfo(filePath) ' check to see if the currently specified file exists
+
+        If checkFile.Exists Then
+            Return filePath
+        Else ' we need to find the file elsewhere
+            Dim looperBase = My.Computer.FileSystem.GetFileInfo(currentLooperFile).Directory.ToString ' get the .looper file's base path
+
+            If My.Computer.FileSystem.GetFileInfo(looperBase & "\" & checkFile.Name.ToString).Exists Then ' if the file exists in the looper directory
+                Return looperBase & "\" & checkFile.Name.ToString ' then mark the file as *existing*, but in a different directory
+            Else
+                Return "Not Found" ' mark the file as not existing in the original *or* the .looper file directory
+            End If
+        End If
+    End Function
+
+    ' ======================================================================================
+    ' ================= EVENT FUNCTIONS ====================================================
+    ' ======================================================================================
+
+    Private Function returnListViewItem(ByVal eventName As String,
+                                        ByVal eventSpeed As String,
+                                        ByVal eventRepeats As String,
+                                        ByVal eventINPoint As String,
+                                        ByVal eventOUTPoint As String,
+                                        ByVal eventPath As String,
+                                        Optional eventPosX As String = "0.5",
+                                        Optional eventPosY As String = "0.5",
+                                        Optional eventZoomX As String = "1",
+                                        Optional eventZoomY As String = "1",
+                                        Optional eventNum As String = Nothing,
+                                        Optional newDur As String = Nothing) As ListViewItem
+
+        Dim newItemArray(11) As String
+
+        If eventNum = Nothing Then
+            newItemArray(0) = CStr(totalNumberOfEvents) ' find the event number based on the current "new" event number
+        Else
+            newItemArray(0) = eventNum ' use the specified number as the new event number
+        End If
+
+        newItemArray(1) = eventName
+        newItemArray(2) = eventSpeed
+        newItemArray(3) = eventRepeats
+        newItemArray(4) = eventINPoint
+        newItemArray(5) = eventOUTPoint
+
+        If newDur = Nothing Then ' if we haven't specified a duration, then let's calculate it
+            If eventOUTPoint <> Nothing Then ' if the out point isn't "nothing", then calculate the duration
+                newItemArray(6) = NumberToTimeString(TimeStringToNumber(eventOUTPoint) - TimeStringToNumber(eventINPoint))
+            Else ' if we don't know what the duration is (there's no out point set), then it's endless, man...
+                newItemArray(6) = Nothing
+            End If
+        Else
+            newItemArray(6) = newDur ' we already calculated the duration in an earlier step (for combining events), so just use that value
+        End If
+
+        newItemArray(7) = eventPath
+        newItemArray(8) = eventPosX
+        newItemArray(9) = eventPosY
+        newItemArray(10) = eventZoomX
+        newItemArray(11) = eventZoomY
+
+        Dim newEvent As New ListViewItem(newItemArray)
+        Return newEvent
+    End Function
+
+
+    Private Sub addEventFromFile(ByVal eventName As String, ByVal eventINPoint As String, ByVal eventOutPoint As String,
+                         ByVal eventFilePath As String, Optional newEventCount As Integer = 0)
+
+        ' if the eventFilePath returned from the Looper file has nothing in it, we can't check to see if the file exists
+        ' so we have to skip adding this event
+        If eventFilePath <> Nothing Then
+            ' Color the incoming .looper file as different colors based on file availability
+            Dim fileExists As String = checkAlternateFileExists(eventFilePath)
+            Dim newEventColor As Color
+            Dim newEventForeColor As Color = Color.White
+
+            If fileExists = "Not Found" Then
+                newEventColor = errorColor
+                newEventForeColor = errorForeColor
+            ElseIf fileExists = eventFilePath Then
+                newEventColor = foundColor
+            Else
+                newEventColor = relativeColor
+                eventFilePath = fileExists
+            End If
+
+            Dim customZoom = betweenTheLines(eventName, "<Z:", ">", "0.5,0.5,1.0,1.0").Split(Convert.ToChar(","))
+
+            Dim newEvent As ListViewItem = returnListViewItem(removeParams(eventName), betweenTheLines(eventName, "<S:", ">", "100"),
+                                                              betweenTheLines(eventName, "<L:", ">", "1"), eventINPoint, eventOutPoint, eventFilePath,
+                                                              customZoom(0), customZoom(1), customZoom(2), customZoom(3))
+
+            If insertItem = True Then
+                If eventsList.SelectedItems.Count > 0 Then ' if something is actually selected
+                    Dim newIndex = eventsList.SelectedItems.Item(eventsList.SelectedItems.Count - 1).Index + 1 + newEventCount
+                    eventsList.Items.Insert(newIndex, newEvent)
+                    eventsList.Items(newIndex).BackColor = newEventColor
+                    eventsList.Items(newIndex).ForeColor = newEventForeColor
+                    If newEventColor = errorColor Then
+                        eventsList.Items(newIndex).SubItems(7).ForeColor = errorFileCellColor
+                        eventsList.Items(newIndex).SubItems(7).Font = New Font(normalFont, FontStyle.Italic)
+                    End If
+                Else
+                    eventsList.Items.Add(newEvent)
+                    eventsList.Items(eventsList.Items.Count - 1).BackColor = newEventColor
+                    eventsList.Items(eventsList.Items.Count - 1).ForeColor = newEventForeColor
+                    If newEventColor = errorColor Then
+                        eventsList.Items(eventsList.Items.Count - 1).SubItems(7).ForeColor = errorFileCellColor
+                        eventsList.Items(eventsList.Items.Count - 1).SubItems(7).Font = New Font(normalFont, FontStyle.Italic)
+                    End If
+                End If
+            Else
+                eventsList.Items.Add(newEvent)
+                eventsList.Items(eventsList.Items.Count - 1).BackColor = newEventColor
+                eventsList.Items(eventsList.Items.Count - 1).ForeColor = newEventForeColor
+                If newEventColor = errorColor Then
+                    eventsList.Items(eventsList.Items.Count - 1).SubItems(7).ForeColor = errorFileCellColor
+                    eventsList.Items(eventsList.Items.Count - 1).SubItems(7).Font = New Font(normalFont, FontStyle.Italic)
+                End If
+            End If
+        End If
+
+        totalNumberOfEvents += 1 ' increment the total number of events counter (to add one at the end)
+    End Sub
+
+    Public Sub addEvent()
+        If currentPlayingFile <> Nothing Then ' if MPC-HC isn't playing anything, then don't DO anything
+            If inSearchMode = True Then
+                restoreFromSearch() 'if we're in Search mode and decide to add an event, get out of Search mode first
+            End If
+
+            SendMessage(CMD_SEND.CMD_GETNOWPLAYING) ' force refresh of NOWPLAYING info
+
+            eventsList.ListViewItemSorter = Nothing ' add the event at the very end of the list if the list is sorted
+
+            ' Filename/Event Number Substitution (suggestion by @inBytes on GitHub) - for example, having:
+            ' "[#]_[[F]] New Event" as the default name will make events called
+            ' "1_[file.mp4] New Event" as the 1st event in the list
+            ' "2_[file.mp4] New Event" as the 2nd event in the list, etc.
+
+            ' replace [F] with the currently playing file's filename
+            Dim newEventName As String = Replace(newEventString, "[F]", System.IO.Path.GetFileName(currentPlayingFile))
+            ' replace [f] with the currently playing file's filename (minus the extension)
+            newEventName = Replace(newEventName, "[f]", System.IO.Path.GetFileNameWithoutExtension(currentPlayingFile))
+            ' replace [#] with the current # in the events list
+            newEventName = Replace(newEventName, "[#]", (eventsList.Items.Count + 1).ToString())
+
+            ' add the event to the events list
+            Dim newEvent = returnListViewItem(newEventName, speedSlider.Value.ToString, "1", inTF.Text, outTF.Text,
+                                              currentPlayingFile)
+            Dim newIndex As Integer
+
+            If insertItem = True Then
+                If eventsList.SelectedItems.Count > 0 Then ' if something is actually selected
+                    newIndex = eventsList.SelectedItems.Item(eventsList.SelectedItems.Count - 1).Index + 1 ' the new index will be where the item was inserted, plus one
+                    eventsList.Items.Insert(eventsList.SelectedItems.Item(eventsList.SelectedItems.Count - 1).Index + 1, newEvent)
+                Else ' if nothing is selected, then just add them as you normally would
+                    newIndex = eventsList.Items.Count ' the new index will be the count, minus one - or in this case, literally just the count, before the one added
+                    eventsList.Items.Add(newEvent)
+                End If
+            Else ' if nothing is selected, and "inserting" is turned off, then just add them to the end of the list
+                newIndex = eventsList.Items.Count ' the new index will be the count, minus one - or in this case, literally just the count, before the one added
+                eventsList.Items.Add(newEvent)
+            End If
+
+            eventsList.BeginUpdate() ' suspend UI redraws during batch updates
+
+            currentPlayingEvent = newIndex ' mark the newly inserted (or added) event as the current playing event
+            setIsModified(1) ' we've added something, so we're now modified
+
+            eventsList.SelectedIndices.Clear() ' clear all other selections
+            highlightEvent(newIndex) ' mark the new event as the currently playing event by bolding the text
+            eventsList.Items(newIndex).EnsureVisible()
+            eventsList.Items(newIndex).Selected = True
+
+            eventsList.EndUpdate() ' resume UI redraws
+
+            tallyTotalList() ' re-tabulate the event list tally
+            updateEventCountLabel()
+            totalNumberOfEvents += 1 ' increment the total number of events counter (to add one at the end)
+
+            If skipEventNameEditor = False Then
+                editListViewItem(newIndex) ' go into the text editor
+            End If
+
+            Dim didAutoSave As Boolean = False
+            If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                autoSaveCurrentFile(True) ' auto-save after adding event, suppress OSD
+                didAutoSave = True
+            End If
+
+            If osdOnAddEvent OrElse (osdOnSave AndAlso didAutoSave) Then
+                Dim osdMsg As String = "Event Added: " & eventsList.Items(newIndex).SubItems(1).Text
+                If didAutoSave AndAlso osdOnSave Then osdMsg &= " — Saved"
+                SendOSD(osdMsg)
+            End If
+        End If
+    End Sub
+
+    Public Sub deleteEvents()
+        If eventsList.Items.Count > 0 Then ' if the events list has more than one event
+            SendMessage(CMD_SEND.CMD_PAUSE) ' pause the player when asking if you want to delete files
+
+            Dim selectedItemsCount = eventsList.SelectedItems.Count ' get the count of events we're choosing to delete
+
+            If selectedItemsCount > 0 Then ' if we have *at least* one item selected, then try to delete it
+                Dim confirmDelete As DialogResult
+                Dim MsgBoxMsg As String ' if we're in Search mode, then write a little description that tells you that
+
+                If selectedItemsCount = eventsList.Items.Count Then ' we're choosing to delete ALL the events (which is basically the same as "Clear List")
+                    If inSearchMode = False Then
+                        MsgBoxMsg =
+                            "You've chosen to delete everything in the current playlist!" & vbCrLf & vbCrLf &
+                            "Deleting ALL of the events from the playlist is the same thing" & vbCrLf &
+                            "as clicking on the Clear All button.  All of the events will be" & vbCrLf &
+                            "removed and Looper will start a brand-new session." & vbCrLf & vbCrLf &
+                            "Would you like to remove all of the current events and" & vbCrLf &
+                            "start a completely New Looper session?"
+                    Else
+                        MsgBoxMsg =
+                            "NOTE: You're currently in Search Mode and" & vbCrLf &
+                            "You've chosen to remove everything in the current playlist!" & vbCrLf & vbCrLf &
+                            "Removing all of these events in Search Mode will clear" & vbCrLf &
+                            "the search and go back to Normal (non-Search) mode, but will" & vbCrLf &
+                            "not actually delete any of the events from the playlist." & vbCrLf & vbCrLf &
+                            "Would you like to do that?"
+                    End If
+
+                    confirmDelete = ShowTopMostMessageBox(MsgBoxMsg,
+                                              "Clear Entire Playlist?",
+                                              MessageBoxButtons.OKCancel,
+                                              MessageBoxIcon.Question,
+                                              MessageBoxDefaultButton.Button1)
+                Else ' we have selected some items, but not ALL of them
+                    Dim titleText As String ' change the title if we're in Search mode
+                    If inSearchMode = False Then
+                        MsgBoxMsg = "Are you sure that you want to delete "
+                        titleText = "Delete Events?"
+                    Else
+                        MsgBoxMsg =
+                        "NOTE: You're currently in Search Mode" & vbCrLf & vbCrLf &
+                        "In Search Mode, if you remove an event, it won't actually delete it" & vbCrLf &
+                        "from the master playlist, just from this list of search results." & vbCrLf & vbCrLf &
+                        "If you want to delete the event from the master playlist completely," & vbCrLf &
+                        "clear the search (by clicking on the X to the right of the Search button)" & vbCrLf &
+                        "before attempting to remove the event." & vbCrLf & vbCrLf &
+                        "Are you sure that you want to remove "
+                        titleText = "Remove Events?"
+                    End If
+
+                    If selectedItemsCount > 1 Then ' we have more than one event selected
+                        MsgBoxMsg += "these " & selectedItemsCount & " events?"
+                    Else
+                        MsgBoxMsg += "this event?"
+                    End If
+
+                    confirmDelete = ShowTopMostMessageBox(MsgBoxMsg,
+                                              titleText,
+                                              MessageBoxButtons.OKCancel,
+                                              MessageBoxIcon.Question,
+                                              MessageBoxDefaultButton.Button1)
+                End If
+
+                If confirmDelete = DialogResult.OK Then
+                    If selectedItemsCount = eventsList.Items.Count Then
+                        If inSearchMode = False Then
+                            clearEventsList()
+                        Else
+                            restoreFromSearch()
+                        End If
+                    Else
+                        eventsList.BeginUpdate() ' prevent UI flicker during bulk delete
+                        For a As Integer = selectedItemsCount - 1 To 0 Step -1 ' delete items from the end to the back, so the index stays correct
+                            eventsList.Items.RemoveAt(eventsList.SelectedItems.Item(a).Index)
+                        Next
+                        eventsList.EndUpdate()
+
+                        setIsModified(1)
+                        tallyTotalList() ' re-tabulate the event list tally
+                        updateEventCountLabel()
+
+                        If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                            autoSaveCurrentFile() ' auto-save after delete
+                        End If
+                    End If
+                End If
+            End If
+
+            If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we finished deleting (or cancelling), so start playing again
+        End If
+    End Sub
+
+    Public Sub modifyEvent(Optional theEvent As Integer = -1)
+        If eventsList.Items.Count > 0 Then ' if we have an event in the playlist
+            If theEvent = -1 Then ' if we're not set to modify a specific event
+                theEvent = eventsList.SelectedItems(0).Index ' set the event to the currently selected event
+            End If
+
+            eventsList.Items(theEvent).SubItems(2).Text = speedSlider.Value.ToString ' the new speed for this event
+            eventsList.Items(theEvent).SubItems(4).Text = inTF.Text ' the new IN point for this event
+            eventsList.Items(theEvent).SubItems(5).Text = outTF.Text ' the new OUT point for this event
+            eventsList.Items(theEvent).SubItems(6).Text = NumberToTimeString(TimeStringToNumber(outTF.Text) - TimeStringToNumber(inTF.Text)) ' the new duration for this event
+
+            setIsModified(1) ' we've modified the event
+            tallyTotalList() ' re-tabulate the event list tally
+
+            If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                autoSaveCurrentFile() ' auto-save after modify
+            End If
+        End If
+    End Sub
+
+    Private Sub autoSaveCurrentFile(Optional suppressOSD As Boolean = False)
+        ' Silently save the current looper file without any dialogs
+        If currentLooperFile IsNot Nothing And eventsList.Items.Count > 0 Then
+            Dim sb As New StringBuilder(eventsList.Items.Count * 120) ' pre-allocate buffer
+
+            For a As Integer = 0 To eventsList.Items.Count - 1
+                Dim item = eventsList.Items(a)
+                Dim speed = item.SubItems(2).Text
+                Dim repeats = item.SubItems(3).Text
+
+                If speed <> "100" Then sb.Append("<S:").Append(speed).Append(">")
+                If repeats <> "1" Then sb.Append("<L:").Append(repeats).Append(">")
+
+
+                sb.Append(item.SubItems(1).Text).Append("|")
+                sb.Append(item.SubItems(4).Text).Append("|")
+                sb.Append(item.SubItems(5).Text).Append("|")
+                sb.AppendLine(item.SubItems(7).Text)
+            Next
+
+            Using writeFile As IO.FileStream = IO.File.Open(currentLooperFile, IO.FileMode.Create, IO.FileAccess.Write)
+                Using writer As New IO.StreamWriter(writeFile, System.Text.Encoding.Unicode)
+                    writer.Write(sb.ToString())
+                End Using
+            End Using
+
+            setIsModified(0) ' we just saved, so clear the modified flag
+            If osdOnSave AndAlso Not suppressOSD Then SendOSD("Looper Saved")
+        End If
+    End Sub
+
+    Private Sub mergeEvents()
+        Dim newInTime As String = eventsList.SelectedItems(0).SubItems(4).Text ' the IN time from the first event is the new IN time
+        Dim newOutTime As String = eventsList.SelectedItems(eventsList.SelectedItems.Count - 1).SubItems(5).Text ' the OUT time from the last event is the new OUT time
+        Dim newDur As String = NumberToTimeString(TimeStringToNumber(newOutTime) - TimeStringToNumber(newInTime))
+
+        Dim mergeEventsResult = ShowTopMostMessageBox("Do you want to merge these " & eventsList.SelectedItems.Count & " events together into one event?" & vbCrLf & vbCrLf &
+                                        "The event's new IN time will be: " & newInTime & vbCrLf &
+                                        "The event's new OUT time will be: " & newOutTime & vbCrLf &
+                                        "The event's new duration will be: " & newDur,
+                                              "Merge Events?",
+                                              MessageBoxButtons.OKCancel,
+                                              MessageBoxIcon.Question,
+                                              MessageBoxDefaultButton.Button1)
+
+        If mergeEventsResult = DialogResult.OK Then
+            eventsList.BeginUpdate() ' stop updating the events list so we can do the next step without glitching the view out
+
+            ' ----------------- TRY TO GET OLD INDEX FROM NAME (betweenTheLines()) - IF NOT, THEN JUST FALL BACK TO GETTING FROM EVENT # -----------------
+            Dim newEventName As String = "Events ["
+            newEventName += betweenTheLines(eventsList.SelectedItems(0).SubItems(1).Text, newEventName, "-", (CInt(eventsList.SelectedItems(0).SubItems(0).Text) - 100).ToString)
+            newEventName += "-" & (CInt(eventsList.SelectedItems(eventsList.SelectedItems.Count - 1).SubItems(0).Text) - 100) & "]"
+
+            ' ----------------- BUILD NEW EVENT FROM THE OTHER EVENTS -----------------
+            Dim combinedEvent = returnListViewItem(newEventName, "100", "1", newInTime, newOutTime,
+                                                   eventsList.SelectedItems(0).SubItems(7).Text,
+                                                   "0.5", "0.5", "1.0", "1.0",
+                                                   eventsList.SelectedItems(eventsList.SelectedItems.Count - 1).SubItems(0).Text,
+                                                   newDur)
+            Dim newEventIdx As Integer = eventsList.SelectedItems(0).Index ' the index to insert the combined event into (get this before deleting below!)
+
+            For a As Integer = eventsList.SelectedItems.Count - 1 To 0 Step -1
+                eventsList.Items.RemoveAt(eventsList.SelectedItems.Item(a).Index) ' delete the old events from the events list
+            Next
+
+            eventsList.Items.Insert(newEventIdx, combinedEvent) ' insert the combined "new" event in the old event's place
+            eventsList.Items(newEventIdx).BackColor = foundColor
+            eventsList.Items(newEventIdx).ForeColor = Color.White
+
+            eventsList.EndUpdate() ' start updating the events list again after we're done modifying it
+            setIsModified(1)
+            updateEventCountLabel()
+        End If
+    End Sub
+
+    Private Sub highlightEvent(Optional theEvent As Integer = -1)
+        For a As Integer = 0 To eventsList.Items.Count - 1
+            If eventsList.Items(a).BackColor = playingColor Then
+                If eventsList.Items(a).SubItems(7).Text <> "" AndAlso Not IO.File.Exists(eventsList.Items(a).SubItems(7).Text) Then
+                    eventsList.Items(a).BackColor = errorColor
+                    eventsList.Items(a).ForeColor = errorForeColor
+                Else
+                    eventsList.Items(a).BackColor = foundColor
+                    eventsList.Items(a).ForeColor = normalForeColor
+                End If
+            End If
+            eventsList.Items(a).Font = normalFont
+        Next
+
+        If theEvent <> -1 Then
+            eventsList.Items(theEvent).BackColor = playingColor
+            eventsList.Items(theEvent).ForeColor = playingForeColor
+            eventsList.Items(theEvent).Font = boldFont
+            eventsList.Items(theEvent).EnsureVisible()
+        End If
+    End Sub
+
+    Public Sub checkAgainstCurrentPlayingEvent()
+        If currentPlayingEvent <> -1 Then
+            Dim currentPlayingEvent_In As String = eventsList.Items(currentPlayingEvent).SubItems(4).Text
+            Dim currentPlayingEvent_Out As String = eventsList.Items(currentPlayingEvent).SubItems(5).Text
+
+            If currentPlayingEvent_In = inTF.Text And currentPlayingEvent_Out = outTF.Text Then
+                highlightEvent(currentPlayingEvent) ' if everything matches the IN and OUT of the current event, then keep the highlighitng
+            Else
+                highlightEvent() ' otherwise, if something doesn't mesh, then clear the highlighting
+            End If
+        End If
+    End Sub
+
+    Private Function loadEvent(ByVal selecteditem As Integer, Optional checkValid As Boolean = False) As Boolean
+        If stilLLoading = False Then
+            stilLLoading = True ' hold off on loading for a second, because we're trying to load something already
+
+            currentPlayingEvent = selecteditem
+
+            If loopModeButton.Text = "SHUFFLE" Then
+                actualPlayingEvent = randomNumberList(selecteditem) ' the actual event to load in Shuffle mode (relative to the current events list)
+                selecteditem = actualPlayingEvent ' set the selectedItem to the value from ^^^
+            End If
+
+            If eventsList.Items(selecteditem).BackColor = errorColor Then ' and the event we're on has an error, then
+                If checkValid = True Then ' if we're forcing a "good event check"
+                    stilLLoading = False ' we're not going any fu(a)rther
+                    Return False ' if we didn't successfully load an event, then return false
+                Else ' we're not forcing the "good event check" (in other words, we clicked on the event directly)
+                    Dim fileFound = findFile(selecteditem) ' find the file(s) you're missing, and re-connect any other paths that match that file
+
+                    ' TODO: if we cancel on a series of files to find, we still don't do anything.  Maybe check to see if we're fixed here?
+                    If fileFound = DialogResult.Cancel Then ' we cancelled finding a file, so don't do anything
+                        If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we cancelled finding an event, so keep on keepin' on
+                        stilLLoading = False
+                        Return False
+                    End If
+                End If
+            End If
+
+            highlightEvent(selecteditem) ' put currently playing event as bold
+
+            loopsRepeatTF.Text = eventsList.Items(selecteditem).SubItems(3).Text ' how many repeats this loop has in Playlist mode
+
+            inTF.Text = eventsList.Items(selecteditem).SubItems(4).Text
+            outTF.Text = eventsList.Items(selecteditem).SubItems(5).Text
+
+            If currentPlayingFile <> eventsList.Items(selecteditem).SubItems(7).Text Then ' we need to load another file
+                If eventsList.Items(selecteditem).BackColor <> errorColor Then ' if there's no issue, then load the file
+                    SendMessage(CMD_SEND.CMD_OPENFILE, eventsList.Items(selecteditem).SubItems(7).Text)
+                    clearINOUTPoint = False
+
+                    loadingEvent = True
+                    Integer.TryParse(eventsList.Items(selecteditem).SubItems(2).Text, loadingEvent_Speed)
+                Else
+                    ' do we need to do anything here?
+                End If
+            Else ' we're still working with the same file
+                Dim theSpeed As Integer
+
+                Integer.TryParse(eventsList.Items(selecteditem).SubItems(2).Text, theSpeed)
+
+                SendMessage(CMD_SEND.CMD_SETPOSITION, CStr(TimeStringToNumber(eventsList.Items(selecteditem).SubItems(4).Text) - 0.5))
+                setSpeed(theSpeed)
+
+                stilLLoading = False
+            End If
+
+            If pausePlaybackOnLoadEvent And eventsList.Items(selecteditem).BackColor <> errorColor Then
+                SendMessage(CMD_SEND.CMD_PAUSE)
+            End If
+
+            If getMode() Then ' we're in OFF or Loop mode
+                SetForegroundWindow(MPCHandle)
+            End If
+        End If
+
+        Return True ' if we made it here, we were successful in loading a file
+    End Function
+
+    Public Sub loadPrevNextEvent(ByVal nextOrPrev As Integer)
+        Dim numOfEvents As Integer = eventsList.Items.Count
+        Dim successfullyLoaded As Boolean = False
+
+        If numOfEvents > 1 Then ' if we have no events, or only one event, there's no reason to do anything!
+            Dim missedEventTicks As Integer = 0
+
+            While successfullyLoaded = False
+                missedEventTicks += 1 ' increment the counter
+
+                Dim nextEventToPlay = currentPlayingEvent + nextOrPrev
+                nextEventToPlay = returnEventBounds(nextEventToPlay)
+
+                If loopModeButton.Text = "PLAYLIST" Then ' find out if the next item we have is selected - if it isn't, then skip it
+                    If eventsList.SelectedItems.Count > 1 Then
+                        While True
+                            For a As Integer = 0 To eventsList.SelectedItems.Count - 1
+                                If nextEventToPlay = eventsList.SelectedItems(a).Index Then
+                                    Exit While
+                                Else
+                                    ' Do nothing, because we haven't found anything
+                                End If
+                            Next
+
+                            If nextOrPrev = 1 Then
+                                nextEventToPlay = returnEventBounds(nextEventToPlay + 1)
+                            Else
+                                nextEventToPlay = returnEventBounds(nextEventToPlay - 1)
+                            End If
+
+                        End While
+                    End If
+                End If
+
+                successfullyLoaded = loadEvent(nextEventToPlay, True) ' check to see if we loaded an event successfully or not, otherwise go to the next one
+
+                If missedEventTicks = eventsList.Items.Count Then ' if we've tried to load every single event and failed, then quit out of this attempt
+                    Exit While
+                End If
+            End While
+        End If
+    End Sub
+
+    Private Function returnEventBounds(ByVal nextEventToPlay As Integer) As Integer
+        If nextEventToPlay < 0 Then
+            nextEventToPlay = eventsList.Items.Count - 1
+        ElseIf nextEventToPlay = eventsList.Items.Count Then
+            nextEventToPlay = 0
+        End If
+
+        Return nextEventToPlay
+    End Function
+
+    Private Sub clearEventsList()
+        eventsList.Items.Clear() ' delete all the items in the events list
+        currentLooperFile = Nothing ' we don't have a looper file loaded now
+        setIsModified(0) ' and we're not modified
+
+        totalNumberOfEvents = 100 ' start the incrementing timer back to 100
+        currentPlayingEvent = -1 ' we're not currently playing an event
+
+        tallyTotalList() ' re-tabulate the event list tally
+        updateEventCountLabel()
+
+        deleteEventButton.Enabled = False
+        modifyEventButton.Enabled = False
+        saveButton.Enabled = False
+    End Sub
+
+    Private Sub tallyTotalList()
+        Dim countOfEvents As Integer = eventsList.Items.Count
+
+        If countOfEvents > 0 Then
+            Dim timeTally As Double = 0.0
+
+            For a As Integer = 0 To countOfEvents - 1
+                timeTally += TimeStringToNumber(eventsList.Items(a).SubItems(6).Text)
+            Next
+
+            eventCountLabel.Text = countOfEvents & " events"
+        Else
+            eventCountLabel.Text = "0 events"
+        End If
+    End Sub
+
+    Private Sub updateEventCountLabel()
+        eventCountLabel.Text = eventsList.Items.Count & " events"
+    End Sub
+
+    ' ======================================================================================
+    ' ================= PLAYLIST BUTTON / CLICK HANDLERS ===================================
+    ' ======================================================================================
+
+    Private Sub prevEventButton_Click(sender As Object, e As EventArgs) Handles prevEventButton.Click
+        loadPrevNextEvent(-1)
+    End Sub
+
+    Private Sub saveButton_Click(sender As Object, e As EventArgs) Handles saveButton.Click
+        If isModified = True Then
+            saveLooperFile()
+        Else 'if we're not in a modified state, but still click the Save button, if you have something selected (which you'd have to), it'll save a subset of events
+            If eventsList.SelectedItems.Count > 0 Then
+                menu_Save.Show(MousePosition.X - 20, MousePosition.Y - 10) ' show the context menu to save a subset
+            End If
+        End If
+    End Sub
+
+
+    Private Sub deleteEventButton_Click(sender As Object, e As EventArgs) Handles deleteEventButton.Click
+        deleteEvents()
+    End Sub
+
+    Private Sub modifyEventButton_Click(sender As Object, e As EventArgs) Handles modifyEventButton.Click
+        If modifyEventButton.Text = "Modify" Then
+            modifyEvent()
+        ElseIf modifyEventButton.Text = "Merge" Then
+            mergeEvents()
+        End If
+    End Sub
+
+    Private Sub addEventButton_Click(sender As Object, e As EventArgs) Handles addEventButton.Click
+        addEvent()
+    End Sub
+
+
+    Private Sub nextEventButton_Click(sender As Object, e As EventArgs) Handles nextEventButton.Click
+        loadPrevNextEvent(1)
+    End Sub
+
+    ' ======================================================================================
+    ' ================== CONTEXT MENU FUNCTIONS ============================================
+    ' ======================================================================================
+
+    Private Sub menu_load_Opening(sender As Object, e As System.ComponentModel.CancelEventArgs) Handles menu_load.Opening
+        If eventsList.Items.Count = 0 Then
+            menuItem_importLooperFile.Enabled = False
+        Else
+            menuItem_importLooperFile.Enabled = True
+        End If
+    End Sub
+
+    Private Sub menuItem_importLooperFile_Click(sender As Object, e As EventArgs) Handles menuItem_importLooperFile.Click
+        loadLooperFile(False)
+    End Sub
+
+    Private Sub menuItem_AddAtEnd_Click(sender As Object, e As EventArgs) Handles menuItem_AddAtEnd.Click
+        menuItem_AddAtEnd.Checked = True
+        menuItem_InsertEvents.Checked = False
+
+        addEventButton.Text = "ADD EVENT"
+
+        insertItem = False
+    End Sub
+
+    Private Sub menuItem_InsertEvents_Click(sender As Object, e As EventArgs) Handles menuItem_InsertEvents.Click
+        menuItem_AddAtEnd.Checked = False
+        menuItem_InsertEvents.Checked = True
+
+        addEventButton.Text = "INS. EVENT"
+
+        insertItem = True
+    End Sub
+
+    Private Sub menu_Save_Opening(sender As Object, e As System.ComponentModel.CancelEventArgs) Handles menu_Save.Opening
+        If eventsList.SelectedIndices.Count > 0 Then
+            menuItem_SaveSelection.Enabled = True
+        Else
+            menuItem_SaveSelection.Enabled = False
+        End If
+    End Sub
+
+    Private Sub menuItem_SaveSelection_Click(sender As Object, e As EventArgs) Handles menuItem_SaveSelection.Click
+        saveLooperFile(True) ' we're only saving a few events, so set this to True to force that
+    End Sub
+
+    ' ======================================================================================
+    ' ================== EVENT SEARCHING FUNCTIONS =========================================
+    ' ======================================================================================
+
+
+    Private Sub searchTF_KeyDown(sender As Object, e As KeyEventArgs) Handles searchTF.KeyDown
+        If e.KeyCode = Keys.Enter Or e.KeyCode = Keys.Return Then
+            eventsList.Focus() ' make the event list the focused item to restore hotkeys/take selection off of the text box
+            e.SuppressKeyPress = True ' stop the ding after hitting these buttons
+        ElseIf e.KeyCode = Keys.Escape Then
+            searchTF.Text = Nothing
+            restoreFromSearch()
+            eventsList.Focus()
+            e.SuppressKeyPress = True
+        End If
+    End Sub
+
+    Private Sub searchTF_TextChanged(sender As Object, e As EventArgs) Handles searchTF.TextChanged
+        ' Real-time filter as you type
+        If searchTF.Text = Nothing Or searchTF.Text = "" Then
+            If inSearchMode Then restoreFromSearch() ' restore full list when search is cleared
+        Else
+            doSearch()
+        End If
+    End Sub
+
+    Private Sub searchTF_Enter(sender As Object, e As EventArgs) Handles searchTF.Enter
+        clearHotKeys()
+        hotkeysActive = True 'tell the hotkey thread that hotkeys are still active, so it doesn't try to clear them (this is for text entry ONLY)
+    End Sub
+
+    Private Sub searchTF_Leave(sender As Object, e As EventArgs) Handles searchTF.Leave
+        setHotKeys()
+    End Sub
+
+    Private Sub doSearch()
+        If searchTF.Text <> Nothing And searchTF.Text <> "" Then
+            ' If we're already in search mode, restore first so we search the full list
+            If inSearchMode Then
+                restoreFromSearch()
+            End If
+
+            If eventsList.Items.Count = 0 Then Exit Sub
+
+            eventsList.SelectedIndices.Clear()
+
+            If UBound(eventsListArray) = 0 Then ' if the master array hasn't been created yet, then create it...
+                ReDim eventsListArray(eventsList.Items.Count, 12)
+
+                For a As Integer = 0 To eventsList.Items.Count - 1
+                    For b As Integer = 0 To 11
+                        eventsListArray(a, b) = eventsList.Items(a).SubItems(b).Text ' get the events into an array
+                    Next
+
+                    eventsListArray(a, 12) = eventsList.Items(a).BackColor
+                Next
+            End If
+
+            Dim foundIndex As New List(Of Integer)
+            Dim searchText As String = UCase(searchTF.Text)
+
+            For a As Integer = 0 To eventsList.Items.Count - 1 ' check the entire list view for the search string
+                Dim eventName As String = UCase(eventsList.Items(a).SubItems(1).Text)
+                Dim eventPath As String = UCase(eventsList.Items(a).SubItems(7).Text)
+                Dim eventID As String = UCase(eventsList.Items(a).SubItems(0).Text)
+
+                ' Search in event name, file path (includes directory and file name), and event ID
+                If Not (eventName.Contains(searchText) OrElse eventPath.Contains(searchText) OrElse eventID.Contains(searchText)) Then
+                    foundIndex.Add(a)
+                End If
+            Next
+
+            If foundIndex.Count <> eventsList.Items.Count Then ' if we found something, then we need to change the list view
+                If currentPlayingEvent > -1 Then
+                    Integer.TryParse(eventsList.Items(currentPlayingEvent).SubItems(0).Text, currentSearchPlayingEvent) ' the ID number of the current playing event
+                End If
+
+                currentPlayingEvent = -1 ' set this to -1 initially to jump to the beginning of the list if the search doesn't contain ^^^
+
+                eventsList.BeginUpdate() ' stop updating the events list so we can do the next step without glitching the view out
+
+                For a As Integer = foundIndex.Count - 1 To 0 Step -1 ' Delete any items in the list that *don't* contain our search phrase
+                    eventsList.Items.RemoveAt(foundIndex(a))
+                Next
+
+                eventsList.EndUpdate() ' start updating the events list again after we're done modifying it
+
+                For a As Integer = 0 To eventsList.Items.Count - 1 ' find the current playing event in the new results
+                    If eventsList.Items(a).SubItems(0).Text = CStr(currentSearchPlayingEvent) Then
+                        currentPlayingEvent = a ' set the current playing event to the position in the current playlist we're in
+                    End If
+                Next
+
+                inSearchMode = True
+                tallyTotalList() ' re-tabulate the event list tally
+
+                If loopModeButton.Text = "SHUFFLE" Then
+                    switchToShuffleMode() ' re-initialize the random number list and re-shuffle (to account for the new listing)
+                End If
+            End If
+        End If
+    End Sub
+
+    Private Sub restoreFromSearch()
+        If UBound(eventsListArray) <> 0 Then ' restore the original events list from the master array
+            If currentPlayingEvent > -1 Then
+                Integer.TryParse(eventsList.Items(currentPlayingEvent).SubItems(0).Text, currentSearchPlayingEvent) ' the ID number of the current playing event (this time, from search mode)
+            End If
+
+            eventsList.BeginUpdate() ' stop updating the events list so we can do the next step without glitching the view out
+            eventsList.Items.Clear()
+
+            For a As Integer = 0 To UBound(eventsListArray) - 1
+                Dim newItemArray(11) As String
+
+                For b As Integer = 0 To 11
+                    newItemArray(b) = CStr(eventsListArray(a, b)) ' re-add all of the original events back to the events list
+                Next
+
+                Dim newEvent = New ListViewItem(newItemArray)
+
+                eventsList.Items.Add(newEvent)
+                eventsList.Items(eventsList.Items.Count - 1).BackColor = CType(eventsListArray(a, 12), Color) ' the last element of the master array is the original back color
+            Next
+
+            eventsList.EndUpdate() ' start updating the events list again after we're done modifying it
+
+            For a As Integer = 0 To eventsList.Items.Count - 1 ' find the current playing event in the new results
+                If eventsList.Items(a).SubItems(0).Text = CStr(currentSearchPlayingEvent) Then
+                    currentPlayingEvent = a ' set the current playing event to the position in the current playlist we're in
+                    checkAgainstCurrentPlayingEvent() ' re-highlight the current playing event (if the IN and OUT points match)
+                    Exit For
+                End If
+            Next
+
+            inSearchMode = False
+            tallyTotalList() ' re-tabulate the event list tally
+
+            If loopModeButton.Text = "SHUFFLE" Then
+                switchToShuffleMode() ' re-initialize the random number list and re-shuffle (to account for the new listing)
+            End If
+
+            ReDim eventsListArray(0, 0) ' delete the master array to clear memory and get it ready for the next search
+        End If
+    End Sub
+
+    ' ======================================================================================
+    ' ================== EVENT NAME EDITING FUNCTIONS ======================================
+    ' ======================================================================================
+
+    Private Sub eventsList_MouseDown(sender As Object, e As MouseEventArgs) Handles eventsList.MouseDown
+        HideTextEditor()
+    End Sub
+
+    Private Sub listViewEditor_Leave(sender As Object, e As EventArgs) Handles listViewEditor.Leave
+        HideTextEditor()
+    End Sub
+
+    Private Sub HideTextEditor()
+        listViewEditor.Visible = False
+
+        If Not (SelectedLSI Is Nothing) Then
+            SelectedLSI.Text = listViewEditor.Text
+            setIsModified(1) ' if we changed the value of one of the event list's names or loops, then mark it as being modified
+            If autoPlayDialogs = True Then SendMessage(CMD_SEND.CMD_PLAY) ' we cancelled or finished editing text, so resume playback
+        End If
+
+        SelectedLSI = Nothing
+        listViewEditor.Text = Nothing
+
+        setHotKeys()
+    End Sub
+
+    Private Sub listViewEditor_KeyDown(sender As Object, e As KeyEventArgs) Handles listViewEditor.KeyDown
+        If e.KeyCode = Keys.Enter Or e.KeyCode = Keys.Return Or e.KeyCode = Keys.Escape Then
+            e.SuppressKeyPress = True ' stop the ding after hitting these buttons
+
+            If e.KeyCode = Keys.Escape Then
+                SelectedLSI = Nothing ' clear the selection, so the edit doesn't take effect
+            End If
+
+            HideTextEditor()
+            SetForegroundWindow(MPCHandle) ' Make MPC-HC the foreground window
+        End If
+    End Sub
+
+    Private Sub eventsList_KeyDown(sender As Object, e As KeyEventArgs) Handles eventsList.KeyDown
+        If eventsList.Items.Count > 0 Then
+            If eventsList.SelectedItems.Count <> 0 Then
+                Dim selectedRow = eventsList.SelectedItems(0).Index
+
+                If e.KeyCode = Keys.F2 Then
+                    editListViewItem(selectedRow)
+                ElseIf e.KeyCode = Keys.F3 Then
+                    editListViewItem(selectedRow, 3)
+                End If
+            End If
+        End If
+    End Sub
+
+    Private Sub editListViewItem(ByVal selectedItem As Integer, Optional selectedSubItem As Integer = 1)
+        SendMessage(CMD_SEND.CMD_PAUSE) ' pause the player when editing text
+
+        Me.Activate() ' make the window frontmost
+
+        clearHotKeys()
+        hotkeysActive = True 'tell the hotkey thread that hotkeys are still active, so it doesn't try to clear them (this is for text entry ONLY)
+
+        SelectedLSI = eventsList.Items(selectedItem).SubItems(selectedSubItem)
+
+        Dim cellWidth = SelectedLSI.Bounds.Width
+        Dim cellHeight = SelectedLSI.Bounds.Height
+        Dim cellLeft = eventsList.Left + SelectedLSI.Bounds.Left
+        Dim cellTop = eventsList.Top + SelectedLSI.Bounds.Top
+
+        listViewEditor.Location = New Point(cellLeft, cellTop)
+        listViewEditor.Size = New Size(cellWidth, cellHeight)
+        listViewEditor.Visible = True
+        listViewEditor.BringToFront()
+        listViewEditor.Text = SelectedLSI.Text
+        listViewEditor.Select()
+        listViewEditor.SelectAll()
+    End Sub
+
+    ' ======================================================================================
+    ' ================== DRAG AND DROP AND SORTING FUNCTIONS ===============================
+    ' ======================================================================================
+
+    Private Sub eventsList_DragDrop(ByVal sender As Object, ByVal e As System.Windows.Forms.DragEventArgs) Handles eventsList.DragDrop
+        eventsList.ListViewItemSorter = Nothing ' Clear custom sorting to get the drag operation to work
+
+        'Returns the location of the mouse pointer in the ListView control.
+        Dim p As Point = eventsList.PointToClient(New Point(e.X, e.Y))
+
+        'Obtain the item that is located at the specified location of the mouse pointer.
+        Dim dragToItem As ListViewItem = eventsList.GetItemAt(p.X, p.Y)
+        Dim dragIndex As Integer
+
+        If dragToItem IsNot Nothing Then
+            'Obtain the index of the item at the mouse pointer.
+            dragIndex = dragToItem.Index
+        Else
+            'Set the index to zero to put it at the very top
+            dragIndex = 0
+        End If
+
+        If e.Data.GetDataPresent("System.Windows.Forms.ListView+SelectedListViewItemCollection") Then ' we're dragging events around in the listview
+            'Return if the items are not selected in the ListView control.
+            If eventsList.SelectedItems.Count = 0 Then Return
+            Dim i As Integer
+            Dim sel(eventsList.SelectedItems.Count) As ListViewItem
+            For i = 0 To eventsList.SelectedItems.Count - 1
+                sel(i) = eventsList.SelectedItems.Item(i)
+            Next
+
+            For i = 0 To eventsList.SelectedItems.Count - 1
+                'Obtain the ListViewItem to be dragged to the target location.
+                Dim dragItem As ListViewItem = sel(i)
+
+                Dim itemIndex As Integer = dragIndex
+                If itemIndex = dragItem.Index Then Return
+                If dragItem.Index < itemIndex Then
+                    itemIndex += 1
+                Else
+                    itemIndex = dragIndex + i
+                End If
+                'Insert the item in the specified location.
+                Dim inserteditem As ListViewItem = CType(dragItem.Clone, ListViewItem)
+
+                eventsList.Items.Insert(itemIndex, inserteditem)
+                'Removes the item from the initial location while
+                'the item is moved to the new location.
+                eventsList.Items.Remove(dragItem)
+            Next
+
+            setIsModified(1) ' if we're not already set as isModified, then do it here
+        Else ' we dragged something on to the listview that ISN'T a listview item (like a file from Explorer)
+            Dim dropFiles() As String = CType(e.Data.GetData("FileDrop", True), String()) ' get the list of files dropped
+
+            If dropFiles.Count > 1 Then
+                Array.Sort(dropFiles) ' sort the array of files alphabetically
+            End If
+
+            Dim currentInsertedItem As Integer = 0 ' keep track of which item we're currently adding
+
+            For a As Integer = 0 To dropFiles.Count - 1
+                If {".mov", ".avi", ".mp4", ".mkv", ".mts", ".m2ts",
+                    ".m2t", ".qt", ".ts", ".qt", ".flv", ".wav", ".mp3",
+                    ".ogg", ".aif", ".aiff"}.Contains(LCase(My.Computer.FileSystem.GetFileInfo(dropFiles(a)).Extension)) Then
+
+                    Dim draggedEvent = returnListViewItem(My.Computer.FileSystem.GetFileInfo(dropFiles(a)).Name, "100", "1", "0:00", Nothing, dropFiles(a))
+
+                    If insertItem = False Then
+                        eventsList.Items.Add(draggedEvent)
+                    Else
+                        eventsList.Items.Insert(dragIndex + currentInsertedItem, draggedEvent)
+                        currentInsertedItem += 1
+                    End If
+
+                    totalNumberOfEvents += 1
+                    setIsModified(1) ' if we're not already set as isModified, then do it here
+                ElseIf My.Computer.FileSystem.GetFileInfo(dropFiles(a)).Extension = ".looper" Then ' we've dragged a looper file into the playlist
+                    If insertItem = False Then ' if we're not set to insert .looper events into the current playlist, then just open a new file
+                        loadLooperFile(True, dropFiles(a))
+                        Exit For ' exit the loop, skipping the rest of the files (this method only opens one file, not a bunch like the above...)
+                    Else ' if we're set to insert .looper events
+                        If eventsList.Items.Count > 0 Then ' if there's actually something already in the playlist
+                            eventsList.SelectedIndices.Clear()
+
+                            If dragIndex <> 0 Then
+                                eventsList.SelectedIndices.Add(dragIndex - 1)
+                            Else
+                                eventsList.SelectedIndices.Add(eventsList.Items.Count - 1)
+                            End If
+
+                            loadLooperFile(False, dropFiles(a)) ' load the new looper at the end of the playlist
+                        Else ' if there's nothing in the playlist, then just open the one file like the above, and skip the other files
+                            loadLooperFile(True, dropFiles(a))
+                            Exit For
+                        End If
+                        ' We can't do anything with this kind of file
+                    End If
+                End If
+            Next
+        End If
+
+        updateEventCountLabel()
+    End Sub
+
+    Private Sub eventsList_DragEnter(ByVal sender As Object, ByVal e As System.Windows.Forms.DragEventArgs) Handles eventsList.DragEnter
+        If e.Data.GetDataPresent("System.Windows.Forms.ListView+SelectedListViewItemCollection") Then ' we're dragging a listview item to another location in the playlist
+            e.Effect = DragDropEffects.Move
+        ElseIf e.Data.GetDataPresent(DataFormats.FileDrop) Then ' we're dragging a file to the playlist from Explorer
+            e.Effect = DragDropEffects.Copy
+        End If
+    End Sub
+
+    Private Sub eventsList_ItemDrag(ByVal sender As Object, ByVal e As System.Windows.Forms.ItemDragEventArgs) Handles eventsList.ItemDrag
+        eventsList.DoDragDrop(eventsList.SelectedItems, DragDropEffects.Move)
+    End Sub
+
+    Private Sub eventsList_ColumnClick(ByVal sender As Object, ByVal e As System.Windows.Forms.ColumnClickEventArgs) Handles eventsList.ColumnClick
+        If eventsList.Items.Count > 0 Then ' if we have more than one event in the playlist... otherwise do nothing!
+            Dim iSortOrder As SortOrder = CType(eventsList.Columns(e.Column).Tag, SortOrder)
+            Dim lvcs As New ListViewColumnSorter
+            If iSortOrder = SortOrder.Ascending Then
+                eventsList.Columns(e.Column).Tag = SortOrder.Descending
+                lvcs.SortingOrder = SortOrder.Descending
+            Else
+                eventsList.Columns(e.Column).Tag = SortOrder.Ascending
+                lvcs.SortingOrder = SortOrder.Ascending
+            End If
+            lvcs.ColumnIndex = e.Column
+            eventsList.ListViewItemSorter = lvcs
+
+            setIsModified(1) ' if we re-sorted the events list, then mark it as being modified
+        End If
     End Sub
 
 End Class

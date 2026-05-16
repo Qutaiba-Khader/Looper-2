@@ -55,7 +55,6 @@ Public Class optionsWindow
             options_outPointOffset = betweenTheLines(fileReader, "outPointOffset=", vbCrLf, "-1") ' how much more to take off of an OUT point to properly loop it (without skipping to the beginning)
             '================== Load the [StartPos] section ==================
             Dim options_startPositionL As String = betweenTheLines(fileReader, "startPositionL=", vbCrLf, "-1") ' the left-most coordinate to open Looper at
-            Dim options_startPLPositionL As String = betweenTheLines(fileReader, "startPLPositionL=", vbCrLf, "-1") ' the left-most coordinate to open Looper's playlist at
 
             '================== Legacy options carried over from the old Looper (but keeping here for compatibility) ==================
             options_MPCConfirm = betweenTheLines(fileReader, "MPCConfirm=", vbCrLf, "-1") ' whether to ask to quit Looper when MPC-HC closes
@@ -80,11 +79,12 @@ Public Class optionsWindow
             saveNewNameTF.Text = mainWindow.newEventString
             If options_newEventName <> "-1" Then saveNewNameCB.Checked = True
 
-            If options_hidePlaylistOnLaunch <> "-1" Then hidePlaylistWndCB.Checked = True
+            hidePlaylistWndCB.Visible = False
+            savePLWindowSizeCB.Visible = False
             If options_alwaysOnTop <> "-1" Then saveAOTCB.Checked = True
             If options_loopButtonMode <> "-1" Then saveCurrentLoopButtonCB.Checked = True
             If options_startPositionL <> "-1" Then saveLooperWndPosCB.Checked = True
-            If options_startPLPositionL <> "-1" Then savePLWindowSizeCB.Checked = True
+            ' savePLWindowSizeCB removed — single window now saves size via saveLooperWndPosCB
 
             If options_disableHotkeys <> "-1" Then disableHK.Checked = True
             If options_allowMultipleInstances <> "-1" Then allowMICB.Checked = True
@@ -129,7 +129,7 @@ Public Class optionsWindow
         '================== Make the [Prefs] section of the INI ==================
         If savePreviewTimeCB.Checked Or saveSlipTimeCB.Checked Or saveCurrentLoopButtonCB.Checked Or saveAOTCB.Checked Or
         forcePauseCB.Checked Or keepModeCB.Checked Or disableTTCB.Checked Or autoloadCB.Checked Or allowMICB.Checked Or
-        disableAutoPlayCB.Checked Or disableAutoPlayOnLoadCB.Checked Or hidePlaylistWndCB.Checked Or saveSpeedCB.Checked Or
+        disableAutoPlayCB.Checked Or disableAutoPlayOnLoadCB.Checked Or saveSpeedCB.Checked Or
         saveNewNameCB.Checked Or skipSaveConfirmCB.Checked Or skipEventNameCB.Checked Or autoSaveCB.Checked Or autoCreateEventCB.Checked Or
         osdInPointCB.Checked Or osdOutPointCB.Checked Or osdAddEventCB.Checked Or osdLoopModeCB.Checked Or osdSaveCB.Checked Or saveDefaultPathCB.Checked Or
         options_MPCConfirm <> "-1" Or options_dockMode <> "-1" Then
@@ -164,10 +164,9 @@ Public Class optionsWindow
 
         If saveNewNameCB.Checked Then writingString = writingString & "newEventName=" & saveNewNameTF.Text & vbCrLf
 
-        If hidePlaylistWndCB.Checked Then writingString = writingString & "hidePlaylistOnLaunch=1" & vbCrLf
 
         If saveAOTCB.Checked Then
-            If mainWindow.alwaysOnTopButton.Text = "Always on Top" Then
+            If mainWindow.TopMost Then
                 writingString = writingString & "alwaysOnTop=1" & vbCrLf ' we want to boot with the window always on the top of other windows
             Else
                 writingString = writingString & "alwaysOnTop=0" & vbCrLf ' we want to boot with the window NOT always on top
@@ -309,16 +308,8 @@ Public Class optionsWindow
             writingString = writingString & "[StartPos]" & vbCrLf
             writingString = writingString & "startPositionL=" & mainWindow.Left & vbCrLf
             writingString = writingString & "startPositionT=" & mainWindow.Top & vbCrLf
-
-            If options_startPositionW <> "-1" Then writingString = writingString & "startPositionW=" & options_startPositionW & vbCrLf ' deprecated, but keeping for legacy
-            If options_startPositionH <> "-1" Then writingString = writingString & "startPositionH=" & options_startPositionH & vbCrLf ' deprecated, but keeping for legacy
-        End If
-
-        If savePLWindowSizeCB.Checked Then ' save the current playlist window positions in the INI file
-            writingString = writingString & "startPLPositionL=" & playlistWindow.Left & vbCrLf
-            writingString = writingString & "startPLPositionT=" & playlistWindow.Top & vbCrLf
-            writingString = writingString & "startPLPositionW=" & playlistWindow.Width & vbCrLf
-            writingString = writingString & "startPLPositionH=" & playlistWindow.Height & vbCrLf
+            writingString = writingString & "startPositionW=" & mainWindow.Width & vbCrLf
+            writingString = writingString & "startPositionH=" & mainWindow.Height & vbCrLf
         End If
 
         '================== Make the [HotKeys] section of the INI ==================

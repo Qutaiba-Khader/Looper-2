@@ -742,7 +742,6 @@ Public Class playlistWindow
     End Sub
 
     Public Sub addEvent()
-        Log("addEvent called, currentPlayingFile=" & If(mainWindow.currentPlayingFile, "Nothing"))
         If mainWindow.currentPlayingFile <> Nothing Then ' if MPC-HC isn't playing anything, then don't DO anything
             If inSearchMode = True Then
                 restoreFromSearch() 'if we're in Search mode and decide to add an event, get out of Search mode first

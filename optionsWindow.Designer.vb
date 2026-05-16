@@ -76,6 +76,7 @@ Partial Class optionsWindow
         '
         Me.previewTimeLabel.AutoSize = True
         Me.previewTimeLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.previewTimeLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.previewTimeLabel.Location = New System.Drawing.Point(7, 34)
         Me.previewTimeLabel.Name = "previewTimeLabel"
         Me.previewTimeLabel.Size = New System.Drawing.Size(91, 17)
@@ -84,7 +85,10 @@ Partial Class optionsWindow
         '
         'previewTimeTF
         '
+        Me.previewTimeTF.BackColor = System.Drawing.Color.FromArgb(CType(CType(26, Byte), Integer), CType(CType(26, Byte), Integer), CType(CType(46, Byte), Integer))
+        Me.previewTimeTF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.previewTimeTF.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.previewTimeTF.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.previewTimeTF.Location = New System.Drawing.Point(10, 52)
         Me.previewTimeTF.Name = "previewTimeTF"
         Me.previewTimeTF.Size = New System.Drawing.Size(90, 25)
@@ -93,7 +97,10 @@ Partial Class optionsWindow
         '
         'slipAmountTF
         '
+        Me.slipAmountTF.BackColor = System.Drawing.Color.FromArgb(CType(CType(26, Byte), Integer), CType(CType(26, Byte), Integer), CType(CType(46, Byte), Integer))
+        Me.slipAmountTF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.slipAmountTF.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.slipAmountTF.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.slipAmountTF.Location = New System.Drawing.Point(142, 52)
         Me.slipAmountTF.Name = "slipAmountTF"
         Me.slipAmountTF.ShortcutsEnabled = False
@@ -105,6 +112,7 @@ Partial Class optionsWindow
         '
         Me.slipAmountLabel.AutoSize = True
         Me.slipAmountLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.slipAmountLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.slipAmountLabel.Location = New System.Drawing.Point(139, 34)
         Me.slipAmountLabel.Name = "slipAmountLabel"
         Me.slipAmountLabel.Size = New System.Drawing.Size(85, 17)
@@ -120,7 +128,7 @@ Partial Class optionsWindow
         Me.savePreviewTimeCB.Size = New System.Drawing.Size(116, 21)
         Me.savePreviewTimeCB.TabIndex = 2
         Me.savePreviewTimeCB.Text = "Save as Default"
-        Me.savePreviewTimeCB.UseVisualStyleBackColor = True
+        Me.savePreviewTimeCB.UseVisualStyleBackColor = False
         '
         'saveSlipTimeCB
         '
@@ -131,7 +139,7 @@ Partial Class optionsWindow
         Me.saveSlipTimeCB.Size = New System.Drawing.Size(116, 21)
         Me.saveSlipTimeCB.TabIndex = 4
         Me.saveSlipTimeCB.Text = "Save as Default"
-        Me.saveSlipTimeCB.UseVisualStyleBackColor = True
+        Me.saveSlipTimeCB.UseVisualStyleBackColor = False
         '
         'saveLooperWndPosCB
         '
@@ -142,7 +150,7 @@ Partial Class optionsWindow
         Me.saveLooperWndPosCB.Size = New System.Drawing.Size(339, 21)
         Me.saveLooperWndPosCB.TabIndex = 12
         Me.saveLooperWndPosCB.Text = "Save current Looper Control Panel position as default"
-        Me.saveLooperWndPosCB.UseVisualStyleBackColor = True
+        Me.saveLooperWndPosCB.UseVisualStyleBackColor = False
         '
         'saveCurrentLoopButtonCB
         '
@@ -153,7 +161,7 @@ Partial Class optionsWindow
         Me.saveCurrentLoopButtonCB.Size = New System.Drawing.Size(318, 21)
         Me.saveCurrentLoopButtonCB.TabIndex = 11
         Me.saveCurrentLoopButtonCB.Text = "Save current Loop Mode button setting as default"
-        Me.saveCurrentLoopButtonCB.UseVisualStyleBackColor = True
+        Me.saveCurrentLoopButtonCB.UseVisualStyleBackColor = False
         '
         'saveAOTCB
         '
@@ -164,7 +172,7 @@ Partial Class optionsWindow
         Me.saveAOTCB.Size = New System.Drawing.Size(291, 21)
         Me.saveAOTCB.TabIndex = 10
         Me.saveAOTCB.Text = "Save current Always on Top setting as default"
-        Me.saveAOTCB.UseVisualStyleBackColor = True
+        Me.saveAOTCB.UseVisualStyleBackColor = False
         '
         'hidePlaylistWndCB
         '
@@ -175,12 +183,13 @@ Partial Class optionsWindow
         Me.hidePlaylistWndCB.Size = New System.Drawing.Size(238, 21)
         Me.hidePlaylistWndCB.TabIndex = 9
         Me.hidePlaylistWndCB.Text = "Hide Playlist window when launching"
-        Me.hidePlaylistWndCB.UseVisualStyleBackColor = True
+        Me.hidePlaylistWndCB.UseVisualStyleBackColor = False
         '
         'defaultTextLabel
         '
         Me.defaultTextLabel.AutoSize = True
         Me.defaultTextLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.defaultTextLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.defaultTextLabel.Location = New System.Drawing.Point(7, 188)
         Me.defaultTextLabel.Name = "defaultTextLabel"
         Me.defaultTextLabel.Size = New System.Drawing.Size(261, 17)
@@ -211,6 +220,7 @@ Partial Class optionsWindow
         '
         Me.extraSettingsLabel.AutoSize = True
         Me.extraSettingsLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.extraSettingsLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.extraSettingsLabel.Location = New System.Drawing.Point(7, 352)
         Me.extraSettingsLabel.Name = "extraSettingsLabel"
         Me.extraSettingsLabel.Size = New System.Drawing.Size(140, 17)
@@ -226,7 +236,7 @@ Partial Class optionsWindow
         Me.keepModeCB.Size = New System.Drawing.Size(345, 21)
         Me.keepModeCB.TabIndex = 20
         Me.keepModeCB.Text = "Keep the current mode setting when opening new files"
-        Me.keepModeCB.UseVisualStyleBackColor = True
+        Me.keepModeCB.UseVisualStyleBackColor = False
         '
         'disableTTCB
         '
@@ -237,7 +247,7 @@ Partial Class optionsWindow
         Me.disableTTCB.Size = New System.Drawing.Size(368, 21)
         Me.disableTTCB.TabIndex = 16
         Me.disableTTCB.Text = "Disable tool tips on the Control Panel and Playlist windows"
-        Me.disableTTCB.UseVisualStyleBackColor = True
+        Me.disableTTCB.UseVisualStyleBackColor = False
         '
         'autoloadCB
         '
@@ -248,7 +258,7 @@ Partial Class optionsWindow
         Me.autoloadCB.Size = New System.Drawing.Size(338, 21)
         Me.autoloadCB.TabIndex = 19
         Me.autoloadCB.Text = "Auto-load the last open .looper file on Looper launch"
-        Me.autoloadCB.UseVisualStyleBackColor = True
+        Me.autoloadCB.UseVisualStyleBackColor = False
         '
         'allowMICB
         '
@@ -259,7 +269,7 @@ Partial Class optionsWindow
         Me.allowMICB.Size = New System.Drawing.Size(227, 21)
         Me.allowMICB.TabIndex = 15
         Me.allowMICB.Text = "Allow multiple instances of Looper"
-        Me.allowMICB.UseVisualStyleBackColor = True
+        Me.allowMICB.UseVisualStyleBackColor = False
         '
         'disableAutoPlayCB
         '
@@ -270,7 +280,7 @@ Partial Class optionsWindow
         Me.disableAutoPlayCB.Size = New System.Drawing.Size(313, 21)
         Me.disableAutoPlayCB.TabIndex = 18
         Me.disableAutoPlayCB.Text = "Disable auto-playing after exiting Looper dialogs"
-        Me.disableAutoPlayCB.UseVisualStyleBackColor = True
+        Me.disableAutoPlayCB.UseVisualStyleBackColor = False
         '
         'disableAutoPlayOnLoadCB
         '
@@ -281,7 +291,7 @@ Partial Class optionsWindow
         Me.disableAutoPlayOnLoadCB.Size = New System.Drawing.Size(361, 21)
         Me.disableAutoPlayOnLoadCB.TabIndex = 21
         Me.disableAutoPlayOnLoadCB.Text = "Disable auto-playing first event when opening .looper file"
-        Me.disableAutoPlayOnLoadCB.UseVisualStyleBackColor = True
+        Me.disableAutoPlayOnLoadCB.UseVisualStyleBackColor = False
         '
         'forcePauseCB
         '
@@ -292,7 +302,7 @@ Partial Class optionsWindow
         Me.forcePauseCB.Size = New System.Drawing.Size(309, 21)
         Me.forcePauseCB.TabIndex = 17
         Me.forcePauseCB.Text = "Force MPC-HC/BE to pause when loading events"
-        Me.forcePauseCB.UseVisualStyleBackColor = True
+        Me.forcePauseCB.UseVisualStyleBackColor = False
         '
         'skipSaveConfirmCB
         '
@@ -303,7 +313,7 @@ Partial Class optionsWindow
         Me.skipSaveConfirmCB.Size = New System.Drawing.Size(300, 21)
         Me.skipSaveConfirmCB.TabIndex = 34
         Me.skipSaveConfirmCB.Text = "Skip save confirmation dialogs"
-        Me.skipSaveConfirmCB.UseVisualStyleBackColor = True
+        Me.skipSaveConfirmCB.UseVisualStyleBackColor = False
         '
         'skipEventNameCB
         '
@@ -314,7 +324,7 @@ Partial Class optionsWindow
         Me.skipEventNameCB.Size = New System.Drawing.Size(350, 21)
         Me.skipEventNameCB.TabIndex = 35
         Me.skipEventNameCB.Text = "Auto-name events (skip name editor on add)"
-        Me.skipEventNameCB.UseVisualStyleBackColor = True
+        Me.skipEventNameCB.UseVisualStyleBackColor = False
         '
         'autoSaveCB
         '
@@ -325,7 +335,7 @@ Partial Class optionsWindow
         Me.autoSaveCB.Size = New System.Drawing.Size(350, 21)
         Me.autoSaveCB.TabIndex = 36
         Me.autoSaveCB.Text = "Auto-save .looper file on changes"
-        Me.autoSaveCB.UseVisualStyleBackColor = True
+        Me.autoSaveCB.UseVisualStyleBackColor = False
         '
         'autoCreateEventCB
         '
@@ -336,12 +346,13 @@ Partial Class optionsWindow
         Me.autoCreateEventCB.Size = New System.Drawing.Size(350, 21)
         Me.autoCreateEventCB.TabIndex = 41
         Me.autoCreateEventCB.Text = "Auto-create event on Set Out Point"
-        Me.autoCreateEventCB.UseVisualStyleBackColor = True
+        Me.autoCreateEventCB.UseVisualStyleBackColor = False
         '
         'defaultSavePathLabel
         '
         Me.defaultSavePathLabel.AutoSize = True
         Me.defaultSavePathLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.defaultSavePathLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.defaultSavePathLabel.Location = New System.Drawing.Point(7, 645)
         Me.defaultSavePathLabel.Name = "defaultSavePathLabel"
         Me.defaultSavePathLabel.Size = New System.Drawing.Size(200, 17)
@@ -350,7 +361,10 @@ Partial Class optionsWindow
         '
         'defaultSavePathTF
         '
+        Me.defaultSavePathTF.BackColor = System.Drawing.Color.FromArgb(CType(CType(26, Byte), Integer), CType(CType(26, Byte), Integer), CType(CType(46, Byte), Integer))
+        Me.defaultSavePathTF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.defaultSavePathTF.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.defaultSavePathTF.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.defaultSavePathTF.Location = New System.Drawing.Point(10, 665)
         Me.defaultSavePathTF.Name = "defaultSavePathTF"
         Me.defaultSavePathTF.Size = New System.Drawing.Size(310, 25)
@@ -358,13 +372,18 @@ Partial Class optionsWindow
         '
         'browseSavePathButton
         '
+        Me.browseSavePathButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer))
+        Me.browseSavePathButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer))
+        Me.browseSavePathButton.FlatAppearance.BorderSize = 1
+        Me.browseSavePathButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.browseSavePathButton.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.browseSavePathButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.browseSavePathButton.Location = New System.Drawing.Point(325, 665)
         Me.browseSavePathButton.Name = "browseSavePathButton"
         Me.browseSavePathButton.Size = New System.Drawing.Size(65, 25)
         Me.browseSavePathButton.TabIndex = 39
         Me.browseSavePathButton.Text = "Browse"
-        Me.browseSavePathButton.UseVisualStyleBackColor = True
+        Me.browseSavePathButton.UseVisualStyleBackColor = False
         '
         'saveDefaultPathCB
         '
@@ -375,32 +394,45 @@ Partial Class optionsWindow
         Me.saveDefaultPathCB.Size = New System.Drawing.Size(183, 21)
         Me.saveDefaultPathCB.TabIndex = 40
         Me.saveDefaultPathCB.Text = "Save this setting as Default"
-        Me.saveDefaultPathCB.UseVisualStyleBackColor = True
+        Me.saveDefaultPathCB.UseVisualStyleBackColor = False
         '
         'savePrefsButton
         '
+        Me.savePrefsButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(42, Byte), Integer), CType(CType(90, Byte), Integer), CType(CType(74, Byte), Integer))
+        Me.savePrefsButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(68, Byte), Integer), CType(CType(170, Byte), Integer), CType(CType(136, Byte), Integer))
+        Me.savePrefsButton.FlatAppearance.BorderSize = 1
+        Me.savePrefsButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.savePrefsButton.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.savePrefsButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(136, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(204, Byte), Integer))
         Me.savePrefsButton.Location = New System.Drawing.Point(280, 720)
         Me.savePrefsButton.Name = "savePrefsButton"
         Me.savePrefsButton.Size = New System.Drawing.Size(110, 35)
         Me.savePrefsButton.TabIndex = 24
         Me.savePrefsButton.Text = "Save Prefs"
-        Me.savePrefsButton.UseVisualStyleBackColor = True
+        Me.savePrefsButton.UseVisualStyleBackColor = False
         '
         'cancelPrefsButton
         '
         Me.cancelPrefsButton.DialogResult = System.Windows.Forms.DialogResult.Cancel
+        Me.cancelPrefsButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer))
+        Me.cancelPrefsButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer))
+        Me.cancelPrefsButton.FlatAppearance.BorderSize = 1
+        Me.cancelPrefsButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.cancelPrefsButton.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.cancelPrefsButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.cancelPrefsButton.Location = New System.Drawing.Point(159, 720)
         Me.cancelPrefsButton.Name = "cancelPrefsButton"
         Me.cancelPrefsButton.Size = New System.Drawing.Size(110, 35)
         Me.cancelPrefsButton.TabIndex = 23
         Me.cancelPrefsButton.Text = "Cancel"
-        Me.cancelPrefsButton.UseVisualStyleBackColor = True
+        Me.cancelPrefsButton.UseVisualStyleBackColor = False
         '
         'saveNewNameTF
         '
+        Me.saveNewNameTF.BackColor = System.Drawing.Color.FromArgb(CType(CType(26, Byte), Integer), CType(CType(26, Byte), Integer), CType(CType(46, Byte), Integer))
+        Me.saveNewNameTF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.saveNewNameTF.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.saveNewNameTF.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.saveNewNameTF.Location = New System.Drawing.Point(10, 126)
         Me.saveNewNameTF.Name = "saveNewNameTF"
         Me.saveNewNameTF.Size = New System.Drawing.Size(379, 25)
@@ -411,6 +443,7 @@ Partial Class optionsWindow
         '
         Me.saveNewNameLabel.AutoSize = True
         Me.saveNewNameLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.saveNewNameLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.saveNewNameLabel.Location = New System.Drawing.Point(7, 108)
         Me.saveNewNameLabel.Name = "saveNewNameLabel"
         Me.saveNewNameLabel.Size = New System.Drawing.Size(105, 17)
@@ -426,7 +459,7 @@ Partial Class optionsWindow
         Me.saveNewNameCB.Size = New System.Drawing.Size(183, 21)
         Me.saveNewNameCB.TabIndex = 8
         Me.saveNewNameCB.Text = "Save this setting as Default"
-        Me.saveNewNameCB.UseVisualStyleBackColor = True
+        Me.saveNewNameCB.UseVisualStyleBackColor = False
         '
         'savePLWindowSizeCB
         '
@@ -437,12 +470,13 @@ Partial Class optionsWindow
         Me.savePLWindowSizeCB.Size = New System.Drawing.Size(354, 21)
         Me.savePLWindowSizeCB.TabIndex = 13
         Me.savePLWindowSizeCB.Text = "Save current Playlist window position and size as default"
-        Me.savePLWindowSizeCB.UseVisualStyleBackColor = True
+        Me.savePLWindowSizeCB.UseVisualStyleBackColor = False
         '
         'openingFilesLabel
         '
         Me.openingFilesLabel.AutoSize = True
         Me.openingFilesLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.openingFilesLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.openingFilesLabel.Location = New System.Drawing.Point(7, 498)
         Me.openingFilesLabel.Name = "openingFilesLabel"
         Me.openingFilesLabel.Size = New System.Drawing.Size(141, 17)
@@ -452,18 +486,24 @@ Partial Class optionsWindow
         'customHotKeysButton
         '
         Me.customHotKeysButton.DialogResult = System.Windows.Forms.DialogResult.Cancel
+        Me.customHotKeysButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer))
+        Me.customHotKeysButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer))
+        Me.customHotKeysButton.FlatAppearance.BorderSize = 1
+        Me.customHotKeysButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.customHotKeysButton.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.customHotKeysButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.customHotKeysButton.Location = New System.Drawing.Point(9, 720)
         Me.customHotKeysButton.Name = "customHotKeysButton"
         Me.customHotKeysButton.Size = New System.Drawing.Size(138, 35)
         Me.customHotKeysButton.TabIndex = 22
         Me.customHotKeysButton.Text = "Custom Hotkeys..."
-        Me.customHotKeysButton.UseVisualStyleBackColor = True
+        Me.customHotKeysButton.UseVisualStyleBackColor = False
         '
         'currentVersionLabel
         '
         Me.currentVersionLabel.AutoSize = True
         Me.currentVersionLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.currentVersionLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.currentVersionLabel.Location = New System.Drawing.Point(7, 8)
         Me.currentVersionLabel.Name = "currentVersionLabel"
         Me.currentVersionLabel.Size = New System.Drawing.Size(108, 17)
@@ -487,7 +527,7 @@ Partial Class optionsWindow
         Me.disableHK.Size = New System.Drawing.Size(137, 21)
         Me.disableHK.TabIndex = 14
         Me.disableHK.Text = "Disable all Hotkeys"
-        Me.disableHK.UseVisualStyleBackColor = True
+        Me.disableHK.UseVisualStyleBackColor = False
         '
         'saveSpeedCB
         '
@@ -498,11 +538,14 @@ Partial Class optionsWindow
         Me.saveSpeedCB.Size = New System.Drawing.Size(116, 21)
         Me.saveSpeedCB.TabIndex = 6
         Me.saveSpeedCB.Text = "Save as Default"
-        Me.saveSpeedCB.UseVisualStyleBackColor = True
+        Me.saveSpeedCB.UseVisualStyleBackColor = False
         '
         'defaultSpeedTF
         '
+        Me.defaultSpeedTF.BackColor = System.Drawing.Color.FromArgb(CType(CType(26, Byte), Integer), CType(CType(26, Byte), Integer), CType(CType(46, Byte), Integer))
+        Me.defaultSpeedTF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.defaultSpeedTF.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.defaultSpeedTF.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.defaultSpeedTF.Location = New System.Drawing.Point(281, 52)
         Me.defaultSpeedTF.Name = "defaultSpeedTF"
         Me.defaultSpeedTF.Size = New System.Drawing.Size(90, 25)
@@ -513,6 +556,7 @@ Partial Class optionsWindow
         '
         Me.speedAmountLabel.AutoSize = True
         Me.speedAmountLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.speedAmountLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.speedAmountLabel.Location = New System.Drawing.Point(278, 34)
         Me.speedAmountLabel.Name = "speedAmountLabel"
         Me.speedAmountLabel.Size = New System.Drawing.Size(95, 17)
@@ -523,6 +567,7 @@ Partial Class optionsWindow
         '
         Me.osdLabel.AutoSize = True
         Me.osdLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.osdLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.osdLabel.Location = New System.Drawing.Point(415, 9)
         Me.osdLabel.Name = "osdLabel"
         Me.osdLabel.Size = New System.Drawing.Size(120, 17)
@@ -538,7 +583,7 @@ Partial Class optionsWindow
         Me.osdInPointCB.Size = New System.Drawing.Size(130, 21)
         Me.osdInPointCB.TabIndex = 51
         Me.osdInPointCB.Text = "Set IN Point"
-        Me.osdInPointCB.UseVisualStyleBackColor = True
+        Me.osdInPointCB.UseVisualStyleBackColor = False
         '
         'osdOutPointCB
         '
@@ -549,7 +594,7 @@ Partial Class optionsWindow
         Me.osdOutPointCB.Size = New System.Drawing.Size(130, 21)
         Me.osdOutPointCB.TabIndex = 52
         Me.osdOutPointCB.Text = "Set OUT Point"
-        Me.osdOutPointCB.UseVisualStyleBackColor = True
+        Me.osdOutPointCB.UseVisualStyleBackColor = False
         '
         'osdAddEventCB
         '
@@ -560,7 +605,7 @@ Partial Class optionsWindow
         Me.osdAddEventCB.Size = New System.Drawing.Size(130, 21)
         Me.osdAddEventCB.TabIndex = 53
         Me.osdAddEventCB.Text = "Add Event"
-        Me.osdAddEventCB.UseVisualStyleBackColor = True
+        Me.osdAddEventCB.UseVisualStyleBackColor = False
         '
         'osdLoopModeCB
         '
@@ -571,7 +616,7 @@ Partial Class optionsWindow
         Me.osdLoopModeCB.Size = New System.Drawing.Size(130, 21)
         Me.osdLoopModeCB.TabIndex = 54
         Me.osdLoopModeCB.Text = "Loop Mode Change"
-        Me.osdLoopModeCB.UseVisualStyleBackColor = True
+        Me.osdLoopModeCB.UseVisualStyleBackColor = False
         '
         'osdSaveCB
         '
@@ -583,7 +628,7 @@ Partial Class optionsWindow
         Me.osdSaveCB.Size = New System.Drawing.Size(130, 21)
         Me.osdSaveCB.TabIndex = 55
         Me.osdSaveCB.Text = "Looper Saved"
-        Me.osdSaveCB.UseVisualStyleBackColor = True
+        Me.osdSaveCB.UseVisualStyleBackColor = False
         '
         'optionsWindow
         '
@@ -591,6 +636,8 @@ Partial Class optionsWindow
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.CancelButton = Me.cancelPrefsButton
+        Me.BackColor = System.Drawing.Color.FromArgb(CType(CType(30, Byte), Integer), CType(CType(30, Byte), Integer), CType(CType(48, Byte), Integer))
+        Me.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.ClientSize = New System.Drawing.Size(570, 765)
         Me.ControlBox = False
         Me.Controls.Add(Me.osdSaveCB)

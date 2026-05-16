@@ -35,8 +35,8 @@ Partial Class MainForm
         '
         Me.fileListView.AllowDrop = True
         Me.fileListView.Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left Or AnchorStyles.Right
-        Me.fileListView.BackColor = Color.FromArgb(30, 30, 30)
-        Me.fileListView.ForeColor = Color.FromArgb(220, 220, 220)
+        Me.fileListView.BackColor = Color.FromArgb(30, 30, 48)
+        Me.fileListView.ForeColor = Color.White
         Me.fileListView.BorderStyle = BorderStyle.None
         Me.fileListView.Columns.AddRange(New ColumnHeader() {Me.colFileName, Me.colPath, Me.colStatus, Me.colResult, Me.colOutput})
         Me.fileListView.FullRowSelect = True
@@ -77,11 +77,11 @@ Partial Class MainForm
         ' addButton
         '
         Me.addButton.Anchor = AnchorStyles.Bottom Or AnchorStyles.Left
-        Me.addButton.BackColor = Color.FromArgb(50, 50, 50)
-        Me.addButton.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80)
+        Me.addButton.BackColor = Color.FromArgb(42, 90, 74)
+        Me.addButton.FlatAppearance.BorderColor = Color.FromArgb(68, 170, 136)
         Me.addButton.FlatStyle = FlatStyle.Flat
         Me.addButton.Font = New Font("Segoe UI", 11.0!, FontStyle.Bold)
-        Me.addButton.ForeColor = Color.FromArgb(100, 200, 100)
+        Me.addButton.ForeColor = Color.White
         Me.addButton.Location = New Point(12, 310)
         Me.addButton.Name = "addButton"
         Me.addButton.Size = New Size(40, 32)
@@ -92,11 +92,11 @@ Partial Class MainForm
         ' removeButton
         '
         Me.removeButton.Anchor = AnchorStyles.Bottom Or AnchorStyles.Left
-        Me.removeButton.BackColor = Color.FromArgb(50, 50, 50)
-        Me.removeButton.FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80)
+        Me.removeButton.BackColor = Color.FromArgb(74, 42, 42)
+        Me.removeButton.FlatAppearance.BorderColor = Color.FromArgb(136, 85, 85)
         Me.removeButton.FlatStyle = FlatStyle.Flat
         Me.removeButton.Font = New Font("Segoe UI", 11.0!, FontStyle.Bold)
-        Me.removeButton.ForeColor = Color.FromArgb(200, 100, 100)
+        Me.removeButton.ForeColor = Color.White
         Me.removeButton.Location = New Point(58, 310)
         Me.removeButton.Name = "removeButton"
         Me.removeButton.Size = New Size(40, 32)
@@ -108,22 +108,22 @@ Partial Class MainForm
         '
         Me.replaceOriginalCB.Anchor = AnchorStyles.Bottom Or AnchorStyles.Left
         Me.replaceOriginalCB.AutoSize = True
-        Me.replaceOriginalCB.ForeColor = Color.FromArgb(180, 180, 180)
+        Me.replaceOriginalCB.ForeColor = Color.White
         Me.replaceOriginalCB.Location = New Point(110, 317)
         Me.replaceOriginalCB.Name = "replaceOriginalCB"
         Me.replaceOriginalCB.Size = New Size(120, 19)
         Me.replaceOriginalCB.TabIndex = 6
         Me.replaceOriginalCB.Text = "Replace original"
-        Me.replaceOriginalCB.UseVisualStyleBackColor = True
+        Me.replaceOriginalCB.UseVisualStyleBackColor = False
         '
         ' openLogButton
         '
         Me.openLogButton.Anchor = AnchorStyles.Bottom Or AnchorStyles.Right
-        Me.openLogButton.BackColor = Color.FromArgb(50, 50, 50)
-        Me.openLogButton.FlatAppearance.BorderColor = Color.FromArgb(70, 70, 70)
+        Me.openLogButton.BackColor = Color.FromArgb(51, 51, 51)
+        Me.openLogButton.FlatAppearance.BorderColor = Color.FromArgb(85, 85, 85)
         Me.openLogButton.FlatStyle = FlatStyle.Flat
         Me.openLogButton.Font = New Font("Segoe UI", 8.0!)
-        Me.openLogButton.ForeColor = Color.FromArgb(150, 150, 150)
+        Me.openLogButton.ForeColor = Color.White
         Me.openLogButton.Location = New Point(442, 310)
         Me.openLogButton.Name = "openLogButton"
         Me.openLogButton.Size = New Size(50, 32)
@@ -134,8 +134,8 @@ Partial Class MainForm
         ' stopButton
         '
         Me.stopButton.Anchor = AnchorStyles.Bottom Or AnchorStyles.Right
-        Me.stopButton.BackColor = Color.FromArgb(140, 40, 40)
-        Me.stopButton.FlatAppearance.BorderColor = Color.FromArgb(180, 60, 60)
+        Me.stopButton.BackColor = Color.FromArgb(74, 42, 42)
+        Me.stopButton.FlatAppearance.BorderColor = Color.FromArgb(136, 85, 85)
         Me.stopButton.FlatStyle = FlatStyle.Flat
         Me.stopButton.Font = New Font("Segoe UI", 9.5!, FontStyle.Bold)
         Me.stopButton.ForeColor = Color.White
@@ -150,8 +150,8 @@ Partial Class MainForm
         ' startFixButton
         '
         Me.startFixButton.Anchor = AnchorStyles.Bottom Or AnchorStyles.Right
-        Me.startFixButton.BackColor = Color.FromArgb(40, 100, 180)
-        Me.startFixButton.FlatAppearance.BorderColor = Color.FromArgb(60, 130, 210)
+        Me.startFixButton.BackColor = Color.FromArgb(42, 58, 90)
+        Me.startFixButton.FlatAppearance.BorderColor = Color.FromArgb(102, 136, 170)
         Me.startFixButton.FlatStyle = FlatStyle.Flat
         Me.startFixButton.Font = New Font("Segoe UI", 9.5!, FontStyle.Bold)
         Me.startFixButton.ForeColor = Color.White
@@ -165,7 +165,7 @@ Partial Class MainForm
         ' statusLabel
         '
         Me.statusLabel.Anchor = AnchorStyles.Bottom Or AnchorStyles.Left Or AnchorStyles.Right
-        Me.statusLabel.ForeColor = Color.FromArgb(150, 150, 150)
+        Me.statusLabel.ForeColor = Color.White
         Me.statusLabel.Location = New Point(12, 350)
         Me.statusLabel.Name = "statusLabel"
         Me.statusLabel.Size = New Size(660, 20)
@@ -187,7 +187,8 @@ Partial Class MainForm
         Me.AllowDrop = True
         Me.AutoScaleDimensions = New SizeF(7.0!, 15.0!)
         Me.AutoScaleMode = AutoScaleMode.Font
-        Me.BackColor = Color.FromArgb(25, 25, 25)
+        Me.BackColor = Color.FromArgb(30, 30, 48)
+        Me.ForeColor = Color.White
         Me.ClientSize = New Size(684, 385)
         Me.Controls.Add(Me.progressBar)
         Me.Controls.Add(Me.openLogButton)

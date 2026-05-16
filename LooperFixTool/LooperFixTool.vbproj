@@ -66,5 +66,10 @@
     <Compile Include="LooperFixer.vb" />
     <Compile Include="Program.vb" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="Everything.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
 </Project>

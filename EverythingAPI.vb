@@ -92,6 +92,8 @@ Module EverythingAPI
             Return err = EVERYTHING_OK
         Catch ex As DllNotFoundException
             Return False
+        Catch ex As BadImageFormatException
+            Return False
         End Try
     End Function
 

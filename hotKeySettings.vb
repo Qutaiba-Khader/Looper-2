@@ -21,7 +21,7 @@ Public Class hotKeySettings
                 hotKeysLV.Items(currentItem).ForeColor = Color.Gray
                 hotKeysLV.Items(currentItem).BackColor = Color.FromArgb(240, 240, 240)
             ElseIf Not mainWindow.hotKeyList(currentItem, 1) = Nothing Then
-                hotKeysLV.Items(currentItem).Font = playlistWindow.boldFont
+                hotKeysLV.Items(currentItem).Font = mainWindow.boldFont
                 hotKeysLV.Items(currentItem).BackColor = Color.LightBlue
             End If
         Next
@@ -135,7 +135,7 @@ Public Class hotKeySettings
             Dim hkIDX As Integer = hotKeysLV.SelectedIndices(0)
 
             ' clear formatting for this hotkey
-            hotKeysLV.Items(hkIDX).Font = playlistWindow.normalFont
+            hotKeysLV.Items(hkIDX).Font = mainWindow.normalFont
             hotKeysLV.Items(hkIDX).BackColor = Color.White
 
             mainWindow.hotKeyList(hkIDX, 1) = Nothing ' reset the custom hotkey to nothing
@@ -159,7 +159,7 @@ Public Class hotKeySettings
             Dim hkIDX As Integer = hotKeysLV.SelectedIndices(0)
 
             ' show custom formatting for this hotkey
-            hotKeysLV.Items(hkIDX).Font = playlistWindow.boldFont
+            hotKeysLV.Items(hkIDX).Font = mainWindow.boldFont
             hotKeysLV.Items(hkIDX).BackColor = Color.LightBlue
 
             mainWindow.hotKeyList(hkIDX, 1) = newHKTF.Text ' set the custom hotkey to a new combination
@@ -197,10 +197,10 @@ Public Class hotKeySettings
                     hotKeysLV.Items(hkIDX).ForeColor = Color.Black
 
                     If Not mainWindow.hotKeyList(hkIDX, 1) = Nothing Then
-                        hotKeysLV.Items(hkIDX).Font = playlistWindow.boldFont
+                        hotKeysLV.Items(hkIDX).Font = mainWindow.boldFont
                         hotKeysLV.Items(hkIDX).BackColor = Color.LightBlue
                     Else
-                        hotKeysLV.Items(hkIDX).Font = playlistWindow.normalFont
+                        hotKeysLV.Items(hkIDX).Font = mainWindow.normalFont
                         hotKeysLV.Items(hkIDX).BackColor = Color.White
                     End If
                 End If
@@ -230,7 +230,7 @@ Public Class hotKeySettings
 
                 ' clear formatting for ALL of the items in the list
                 hotKeysLV.Items(currentItem).Text = mainWindow.hotKeyList(currentItem, 2)
-                hotKeysLV.Items(currentItem).Font = playlistWindow.normalFont
+                hotKeysLV.Items(currentItem).Font = mainWindow.normalFont
                 hotKeysLV.Items(currentItem).ForeColor = Color.Black
                 hotKeysLV.Items(currentItem).BackColor = Color.White
             Next

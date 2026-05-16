@@ -15,13 +15,15 @@ h2:first-of-type { margin-top: 20px; }
 .btn-accent { background: #2a5a4a; border-color: #4a8; color: #8fc; }
 .btn-mode { font-weight: bold; padding: 5px 14px; border-radius: 4px; font-size: 11px; cursor: pointer; }
 .btn-danger { background: #4a2a2a; border-color: #855; color: #faa; }
+.btn-fix { background: #2a3a5a; border-color: #68a; color: #8cf; }
+.btn-fix:hover { background: #3a4a6a; color: #adf; }
 .input-dark { font-size: 11px; padding: 4px 6px; background: #1a1a2e; border: 1px solid #444; color: #eee; border-radius: 3px; text-align: center; }
 .search-input { font-size: 11px; padding: 5px 10px; background: #1a1a2e; border: 1px solid #444; color: #eee; border-radius: 3px; width: 100%; }
 .speed-control { display: flex; align-items: center; gap: 2px; }
 .speed-control .speed-val { font-size: 11px; font-weight: bold; color: #7fdbda; background: #1a1a2e; border: 1px solid #444; padding: 3px 8px; border-radius: 3px; min-width: 42px; text-align: center; }
 .speed-control .speed-btn { font-size: 10px; padding: 3px 6px; background: #333; border: 1px solid #555; color: #ccc; cursor: pointer; border-radius: 2px; }
 
-.window { background: #1e1e30; border: 1px solid #333; width: 620px; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+.window { background: #1e1e30; border: 1px solid #333; width: 750px; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
 .controls-row { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #252540; border-bottom: 1px solid #333; }
 .controls-row .point-group { display: flex; align-items: center; gap: 3px; }
 .controls-row .point-group .label { font-size: 9px; font-weight: bold; color: #888; }
@@ -66,9 +68,84 @@ h2:first-of-type { margin-top: 20px; }
 .settings-input-row button { font-size: 10px; padding: 4px 8px; background: #333; border: 1px solid #555; color: #ccc; border-radius: 3px; cursor: pointer; }
 .settings-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #252540; border-top: 1px solid #333; }
 .settings-footer .btn-save { background: #2a5a4a; border-color: #4a8; color: #8fc; font-weight: bold; padding: 6px 20px; font-size: 11px; }
+
+/* Resizable demo */
+.window-resizable { background: #1e1e30; border: 1px solid #333; width: 750px; min-width: 420px; min-height: 300px; border-radius: 6px; overflow: hidden; margin-bottom: 20px; resize: both; display: flex; flex-direction: column; }
+.window-resizable .controls-row { flex-shrink: 0; flex-wrap: wrap; row-gap: 4px; }
+.window-resizable .filter-bar { flex-shrink: 0; }
+.window-resizable .playlist { flex: 1; max-height: none; overflow-y: auto; }
+.window-resizable .bottom-bar { flex-shrink: 0; flex-wrap: wrap; row-gap: 4px; }
+.window-resizable .dark-table td.file-cell-trunc { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.resize-hint { font-size: 11px; color: #555; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.resize-hint span { background: #252540; border: 1px solid #333; padding: 2px 8px; border-radius: 3px; font-size: 10px; color: #7fdbda; }
 </style>
 </head>
 <body>
+
+<!-- ==================== RESIZABLE DEMO ==================== -->
+<h2>Resizable Demo — Drag bottom-right corner to resize</h2>
+<p class="resize-hint">Drag the <span>⤡</span> handle at the bottom-right corner. Min width: 420px.</p>
+
+<div class="window-resizable" style="height: 460px;">
+  <div class="controls-row">
+    <button class="btn-mode mode-loop">LOOP</button>
+    <div class="divider"></div>
+    <div class="point-group">
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="1:23.456">
+      <button class="btn" style="background:#2a4a5a; border-color:#5aa; color:#8df;">SET A</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="point-group">
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="3:12.789">
+      <button class="btn" style="background:#4a3a2a; border-color:#a85; color:#fc8;">SET B</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <div class="speed-control">
+      <button class="speed-btn">-</button>
+      <span class="speed-val">100%</span>
+      <button class="speed-btn">+</button>
+    </div>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn" style="font-size:14px; padding:3px 8px;">⚙</button>
+    <button class="btn">📂</button>
+    <button class="btn">📌</button>
+  </div>
+  <div class="filter-bar">
+    <span class="filter-icon">🔍</span>
+    <input class="search-input" placeholder="Filter events..." style="flex:1;">
+  </div>
+  <div class="playlist">
+    <table class="dark-table">
+      <thead><tr><th>#</th><th>Event Name</th><th>Spd</th><th>×</th><th>IN</th><th>OUT</th><th>Duration</th><th>File</th></tr></thead>
+      <tbody>
+        <tr><td>100</td><td>Intro Loop</td><td>100</td><td>1</td><td>0:00.000</td><td>0:45.200</td><td>0:45.200</td><td class="file-cell-trunc">scene_01.mp4</td></tr>
+        <tr class="playing"><td>101</td><td>Chorus A</td><td>75</td><td>3</td><td>1:23.456</td><td>2:34.567</td><td>1:11.111</td><td class="file-cell-trunc">scene_01.mp4</td></tr>
+        <tr><td>102</td><td>Bridge Section</td><td>100</td><td>1</td><td>3:00.000</td><td>3:30.000</td><td>0:30.000</td><td class="file-cell-trunc">scene_01.mp4</td></tr>
+        <tr><td>103</td><td>Outro</td><td>50</td><td>2</td><td>4:10.000</td><td>5:00.000</td><td>0:50.000</td><td class="file-cell-trunc">scene_02.mp4</td></tr>
+        <tr><td>104</td><td>Solo Part</td><td>100</td><td>1</td><td>2:00.000</td><td>2:45.000</td><td>0:45.000</td><td class="file-cell-trunc">scene_02.mp4</td></tr>
+        <tr><td>105</td><td>Verse 2</td><td>100</td><td>1</td><td>5:10.000</td><td>6:00.000</td><td>0:50.000</td><td class="file-cell-trunc">scene_02.mp4</td></tr>
+        <tr><td>106</td><td>Final Chorus</td><td>125</td><td>2</td><td>6:30.000</td><td>7:15.000</td><td>0:45.000</td><td class="file-cell-trunc">scene_03.mp4</td></tr>
+        <tr><td>107</td><td>Breakdown</td><td>80</td><td>1</td><td>7:20.000</td><td>8:00.000</td><td>0:40.000</td><td class="file-cell-trunc">scene_03.mp4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn">◀</button>
+    <button class="btn">▶</button>
+    <div class="divider"></div>
+    <button class="btn btn-accent">+ Add</button>
+    <button class="btn">✎ Modify</button>
+    <button class="btn btn-danger">✕ Del</button>
+    <div class="divider"></div>
+    <button class="btn">💾 Save</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn btn-fix">Fix</button>
+    <button class="btn">Fix-Tool</button>
+  </div>
+</div>
 
 <!-- ==================== NORMAL STATE ==================== -->
 <h2>Normal — Loop Mode active, event playing</h2>
@@ -78,17 +155,15 @@ h2:first-of-type { margin-top: 20px; }
     <button class="btn-mode mode-loop">LOOP</button>
     <div class="divider"></div>
     <div class="point-group">
-      <span class="label">IN</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" value="1:23.456">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#2a4a5a; border-color:#5aa; color:#8df;">SET A</button>
       <button class="btn">+</button>
     </div>
     <div class="point-group">
-      <span class="label">OUT</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" value="3:12.789">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#4a3a2a; border-color:#a85; color:#fc8;">SET B</button>
       <button class="btn">+</button>
     </div>
     <div class="divider"></div>
@@ -97,8 +172,8 @@ h2:first-of-type { margin-top: 20px; }
       <span class="speed-val">100%</span>
       <button class="speed-btn">+</button>
     </div>
-    <div class="divider"></div>
-    <button class="btn">⚙</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn" style="font-size:14px; padding:3px 8px;">⚙</button>
     <button class="btn">📂</button>
     <button class="btn">📌</button>
   </div>
@@ -124,10 +199,15 @@ h2:first-of-type { margin-top: 20px; }
   <div class="bottom-bar">
     <button class="btn">◀</button>
     <button class="btn">▶</button>
+    <div class="divider"></div>
     <button class="btn btn-accent">+ Add</button>
     <button class="btn">✎ Modify</button>
     <button class="btn btn-danger">✕ Del</button>
+    <div class="divider"></div>
     <button class="btn">💾 Save</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn btn-fix">Fix</button>
+    <button class="btn">Fix-Tool</button>
   </div>
 </div>
 
@@ -139,17 +219,15 @@ h2:first-of-type { margin-top: 20px; }
     <button class="btn-mode mode-off">OFF</button>
     <div class="divider"></div>
     <div class="point-group">
-      <span class="label">IN</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" value="">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#2a4a5a; border-color:#5aa; color:#8df;">SET A</button>
       <button class="btn">+</button>
     </div>
     <div class="point-group">
-      <span class="label">OUT</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" value="">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#4a3a2a; border-color:#a85; color:#fc8;">SET B</button>
       <button class="btn">+</button>
     </div>
     <div class="divider"></div>
@@ -158,8 +236,8 @@ h2:first-of-type { margin-top: 20px; }
       <span class="speed-val">100%</span>
       <button class="speed-btn">+</button>
     </div>
-    <div class="divider"></div>
-    <button class="btn">⚙</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn" style="font-size:14px; padding:3px 8px;">⚙</button>
     <button class="btn">📂</button>
     <button class="btn">📌</button>
   </div>
@@ -183,10 +261,15 @@ h2:first-of-type { margin-top: 20px; }
   <div class="bottom-bar">
     <button class="btn">◀</button>
     <button class="btn">▶</button>
+    <div class="divider"></div>
     <button class="btn btn-accent">+ Add</button>
     <button class="btn">✎ Modify</button>
     <button class="btn btn-danger">✕ Del</button>
+    <div class="divider"></div>
     <button class="btn">💾 Save</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn btn-fix">Fix</button>
+    <button class="btn">Fix-Tool</button>
   </div>
 </div>
 
@@ -198,17 +281,15 @@ h2:first-of-type { margin-top: 20px; }
     <button class="btn-mode mode-loop">LOOP</button>
     <div class="divider"></div>
     <div class="point-group">
-      <span class="label">IN</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" value="1:23.456">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#2a4a5a; border-color:#5aa; color:#8df;">SET A</button>
       <button class="btn">+</button>
     </div>
     <div class="point-group">
-      <span class="label">OUT</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" value="2:34.567">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#4a3a2a; border-color:#a85; color:#fc8;">SET B</button>
       <button class="btn">+</button>
     </div>
     <div class="divider"></div>
@@ -217,8 +298,8 @@ h2:first-of-type { margin-top: 20px; }
       <span class="speed-val">75%</span>
       <button class="speed-btn">+</button>
     </div>
-    <div class="divider"></div>
-    <button class="btn">⚙</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn" style="font-size:14px; padding:3px 8px;">⚙</button>
     <button class="btn">📂</button>
     <button class="btn">📌</button>
   </div>
@@ -240,10 +321,15 @@ h2:first-of-type { margin-top: 20px; }
   <div class="bottom-bar">
     <button class="btn">◀</button>
     <button class="btn">▶</button>
+    <div class="divider"></div>
     <button class="btn btn-accent">+ Add</button>
     <button class="btn">✎ Modify</button>
     <button class="btn btn-danger">✕ Del</button>
+    <div class="divider"></div>
     <button class="btn">💾 Save</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn btn-fix">Fix</button>
+    <button class="btn">Fix-Tool</button>
   </div>
 </div>
 
@@ -255,17 +341,15 @@ h2:first-of-type { margin-top: 20px; }
     <button class="btn-mode mode-off">OFF</button>
     <div class="divider"></div>
     <div class="point-group">
-      <span class="label">IN</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" placeholder="—">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#2a4a5a; border-color:#5aa; color:#8df;">SET A</button>
       <button class="btn">+</button>
     </div>
     <div class="point-group">
-      <span class="label">OUT</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" placeholder="—">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#4a3a2a; border-color:#a85; color:#fc8;">SET B</button>
       <button class="btn">+</button>
     </div>
     <div class="divider"></div>
@@ -274,8 +358,8 @@ h2:first-of-type { margin-top: 20px; }
       <span class="speed-val">100%</span>
       <button class="speed-btn">+</button>
     </div>
-    <div class="divider"></div>
-    <button class="btn">⚙</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn" style="font-size:14px; padding:3px 8px;">⚙</button>
     <button class="btn">📂</button>
     <button class="btn">📌</button>
   </div>
@@ -292,10 +376,15 @@ h2:first-of-type { margin-top: 20px; }
   <div class="bottom-bar">
     <button class="btn" style="opacity:0.3;">◀</button>
     <button class="btn" style="opacity:0.3;">▶</button>
+    <div class="divider"></div>
     <button class="btn btn-accent">+ Add</button>
     <button class="btn" style="opacity:0.3;">✎ Modify</button>
     <button class="btn" style="opacity:0.3;">✕ Del</button>
+    <div class="divider"></div>
     <button class="btn" style="opacity:0.3;">💾 Save</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn btn-fix" style="opacity:0.3;">Fix</button>
+    <button class="btn">Fix-Tool</button>
   </div>
 </div>
 
@@ -307,17 +396,15 @@ h2:first-of-type { margin-top: 20px; }
     <button class="btn-mode mode-playlist">PLAYLIST</button>
     <div class="divider"></div>
     <div class="point-group">
-      <span class="label">IN</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" value="12:05.100">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#2a4a5a; border-color:#5aa; color:#8df;">SET A</button>
       <button class="btn">+</button>
     </div>
     <div class="point-group">
-      <span class="label">OUT</span>
       <button class="btn">-</button>
       <input class="input-dark" style="width:68px" value="12:55.000">
-      <button class="btn btn-accent">SET</button>
+      <button class="btn" style="background:#4a3a2a; border-color:#a85; color:#fc8;">SET B</button>
       <button class="btn">+</button>
     </div>
     <div class="divider"></div>
@@ -326,8 +413,8 @@ h2:first-of-type { margin-top: 20px; }
       <span class="speed-val">100%</span>
       <button class="speed-btn">+</button>
     </div>
-    <div class="divider"></div>
-    <button class="btn">⚙</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn" style="font-size:14px; padding:3px 8px;">⚙</button>
     <button class="btn">📂</button>
     <button class="btn">📌</button>
   </div>
@@ -356,10 +443,15 @@ h2:first-of-type { margin-top: 20px; }
   <div class="bottom-bar">
     <button class="btn">◀</button>
     <button class="btn">▶</button>
+    <div class="divider"></div>
     <button class="btn btn-accent">+ Add</button>
     <button class="btn">✎ Modify</button>
     <button class="btn btn-danger">✕ Del</button>
+    <div class="divider"></div>
     <button class="btn">💾 Save</button>
+    <div class="divider" style="margin-left:auto;"></div>
+    <button class="btn btn-fix">Fix</button>
+    <button class="btn">Fix-Tool</button>
   </div>
 </div>
 
@@ -400,8 +492,7 @@ h2:first-of-type { margin-top: 20px; }
       <label class="checkbox-row"><input type="checkbox"> Save slip amount</label>
       <label class="checkbox-row"><input type="checkbox"> Save Always-on-Top state</label>
       <label class="checkbox-row"><input type="checkbox"> Save Loop Mode state</label>
-      <label class="checkbox-row"><input type="checkbox"> Save Looper window position</label>
-      <label class="checkbox-row"><input type="checkbox"> Save Playlist window position/size</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Save window position/size</label>
       <label class="checkbox-row"><input type="checkbox"> Save default speed</label>
       <label class="checkbox-row"><input type="checkbox"> Save event name template</label>
 

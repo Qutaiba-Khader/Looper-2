@@ -14,7 +14,7 @@ Module LooperFixer
         Public Skipped As Boolean
     End Structure
 
-    Public Sub Log(msg As String)
+    Private Sub FixerLog(msg As String)
         Try
             File.AppendAllText(LogPath, DateTime.Now.ToString("HH:mm:ss") & " | " & msg & vbCrLf)
         Catch
@@ -30,7 +30,7 @@ Module LooperFixer
             .Skipped = False
         }
 
-        Log("--- Processing: " & inputPath)
+FixerLog("--- Processing: " & inputPath)
 
         Dim encoding As Encoding = DetectEncoding(inputPath)
         Dim lines() As String = File.ReadAllLines(inputPath, encoding)
@@ -94,7 +94,7 @@ Module LooperFixer
                 fixedLines.Add(ReplacePathInLine(line, bestMatch))
                 result.FixedEvents += 1
                 anyChanged = True
-                Log("    FIXED -> " & bestMatch)
+FixerLog("    FIXED -> " & bestMatch)
             Else
                 pathCache(filename) = filePath
                 fixedLines.Add(line)
@@ -105,7 +105,7 @@ Module LooperFixer
         ' Only write output if something actually changed
         If Not anyChanged Then
             result.Skipped = True
-            Log("  No changes needed, skipping output file")
+FixerLog("  No changes needed, skipping output file")
             Return result
         End If
 
@@ -114,13 +114,13 @@ Module LooperFixer
             Dim originalDate = File.GetLastWriteTime(inputPath)
             File.WriteAllLines(inputPath, fixedLines.ToArray(), encoding)
             File.SetLastWriteTime(inputPath, originalDate)
-            Log("  Replaced original (kept date " & originalDate.ToString("yyyy-MM-dd HH:mm:ss") & "): " & inputPath)
+FixerLog("  Replaced original (kept date " & originalDate.ToString("yyyy-MM-dd HH:mm:ss") & "): " & inputPath)
         Else
             Dim dir = Path.GetDirectoryName(inputPath)
             Dim nameNoExt = Path.GetFileNameWithoutExtension(inputPath)
             result.OutputPath = Path.Combine(dir, nameNoExt & "-fixed.looper")
             File.WriteAllLines(result.OutputPath, fixedLines.ToArray(), encoding)
-            Log("  Saved: " & result.OutputPath)
+FixerLog("  Saved: " & result.OutputPath)
         End If
 
         Return result

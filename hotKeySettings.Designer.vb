@@ -39,7 +39,9 @@ Partial Class hotKeySettings
         '
         'currentHKTF
         '
-        Me.currentHKTF.BackColor = System.Drawing.Color.Gainsboro
+        Me.currentHKTF.BackColor = System.Drawing.Color.FromArgb(CType(CType(26, Byte), Integer), CType(CType(26, Byte), Integer), CType(CType(46, Byte), Integer))
+        Me.currentHKTF.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
+        Me.currentHKTF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.currentHKTF.Font = New System.Drawing.Font("Segoe UI", 8.0!)
         Me.currentHKTF.Location = New System.Drawing.Point(11, 288)
         Me.currentHKTF.Name = "currentHKTF"
@@ -52,6 +54,7 @@ Partial Class hotKeySettings
         '
         Me.currentHKLabel.AutoSize = True
         Me.currentHKLabel.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.currentHKLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.currentHKLabel.Location = New System.Drawing.Point(8, 272)
         Me.currentHKLabel.Name = "currentHKLabel"
         Me.currentHKLabel.Size = New System.Drawing.Size(102, 13)
@@ -63,6 +66,7 @@ Partial Class hotKeySettings
         '
         Me.currentHKDesc.AutoSize = True
         Me.currentHKDesc.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.currentHKDesc.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.currentHKDesc.Location = New System.Drawing.Point(66, 292)
         Me.currentHKDesc.Name = "currentHKDesc"
         Me.currentHKDesc.Size = New System.Drawing.Size(0, 13)
@@ -73,6 +77,7 @@ Partial Class hotKeySettings
         '
         Me.newHKDesc.AutoSize = True
         Me.newHKDesc.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.newHKDesc.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.newHKDesc.Location = New System.Drawing.Point(240, 292)
         Me.newHKDesc.Name = "newHKDesc"
         Me.newHKDesc.Size = New System.Drawing.Size(0, 13)
@@ -81,6 +86,9 @@ Partial Class hotKeySettings
         '
         'newHKTF
         '
+        Me.newHKTF.BackColor = System.Drawing.Color.FromArgb(CType(CType(26, Byte), Integer), CType(CType(26, Byte), Integer), CType(CType(46, Byte), Integer))
+        Me.newHKTF.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
+        Me.newHKTF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.newHKTF.Font = New System.Drawing.Font("Segoe UI", 8.0!)
         Me.newHKTF.Location = New System.Drawing.Point(185, 288)
         Me.newHKTF.Name = "newHKTF"
@@ -92,6 +100,7 @@ Partial Class hotKeySettings
         '
         Me.newHKLabel.AutoSize = True
         Me.newHKLabel.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.newHKLabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.newHKLabel.Location = New System.Drawing.Point(182, 272)
         Me.newHKLabel.Name = "newHKLabel"
         Me.newHKLabel.Size = New System.Drawing.Size(78, 13)
@@ -101,39 +110,53 @@ Partial Class hotKeySettings
         '
         'setNewHKButton
         '
+        Me.setNewHKButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer))
         Me.setNewHKButton.Enabled = False
+        Me.setNewHKButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer))
+        Me.setNewHKButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.setNewHKButton.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.setNewHKButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.setNewHKButton.Location = New System.Drawing.Point(185, 314)
         Me.setNewHKButton.Name = "setNewHKButton"
         Me.setNewHKButton.Size = New System.Drawing.Size(125, 24)
         Me.setNewHKButton.TabIndex = 5
         Me.setNewHKButton.Text = "SET NEW HOTKEY"
-        Me.setNewHKButton.UseVisualStyleBackColor = True
+        Me.setNewHKButton.UseVisualStyleBackColor = False
         '
         'setDefaultHKButton
         '
+        Me.setDefaultHKButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer))
         Me.setDefaultHKButton.Enabled = False
+        Me.setDefaultHKButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer))
+        Me.setDefaultHKButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.setDefaultHKButton.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.setDefaultHKButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.setDefaultHKButton.Location = New System.Drawing.Point(12, 314)
         Me.setDefaultHKButton.Name = "setDefaultHKButton"
         Me.setDefaultHKButton.Size = New System.Drawing.Size(119, 24)
         Me.setDefaultHKButton.TabIndex = 4
         Me.setDefaultHKButton.Text = "SET TO DEFAULT"
-        Me.setDefaultHKButton.UseVisualStyleBackColor = True
+        Me.setDefaultHKButton.UseVisualStyleBackColor = False
         '
         'OKButton
         '
+        Me.OKButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(42, Byte), Integer), CType(CType(90, Byte), Integer), CType(CType(74, Byte), Integer))
+        Me.OKButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(68, Byte), Integer), CType(CType(170, Byte), Integer), CType(CType(136, Byte), Integer))
+        Me.OKButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.OKButton.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.OKButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.OKButton.Location = New System.Drawing.Point(265, 344)
         Me.OKButton.Name = "OKButton"
         Me.OKButton.Size = New System.Drawing.Size(98, 24)
         Me.OKButton.TabIndex = 7
         Me.OKButton.Text = "OK"
-        Me.OKButton.UseVisualStyleBackColor = True
+        Me.OKButton.UseVisualStyleBackColor = False
         '
         'hotKeysLV
         '
-        Me.hotKeysLV.BackColor = System.Drawing.Color.White
+        Me.hotKeysLV.BackColor = System.Drawing.Color.FromArgb(CType(CType(30, Byte), Integer), CType(CType(30, Byte), Integer), CType(CType(48, Byte), Integer))
+        Me.hotKeysLV.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
+        Me.hotKeysLV.BorderStyle = System.Windows.Forms.BorderStyle.None
         Me.hotKeysLV.Columns.AddRange(New System.Windows.Forms.ColumnHeader() {Me.hotKeyColumn})
         Me.hotKeysLV.Font = New System.Drawing.Font("Segoe UI", 9.0!)
         Me.hotKeysLV.FullRowSelect = True
@@ -153,29 +176,39 @@ Partial Class hotKeySettings
         '
         'disableHKButton
         '
+        Me.disableHKButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(74, Byte), Integer), CType(CType(42, Byte), Integer), CType(CType(42, Byte), Integer))
         Me.disableHKButton.Enabled = False
+        Me.disableHKButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(136, Byte), Integer), CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer))
+        Me.disableHKButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.disableHKButton.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.disableHKButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.disableHKButton.Location = New System.Drawing.Point(316, 314)
         Me.disableHKButton.Name = "disableHKButton"
         Me.disableHKButton.Size = New System.Drawing.Size(47, 24)
         Me.disableHKButton.TabIndex = 43
         Me.disableHKButton.Text = "DISABLE"
-        Me.disableHKButton.UseVisualStyleBackColor = True
+        Me.disableHKButton.UseVisualStyleBackColor = False
         '
         'resetAllButton
         '
+        Me.resetAllButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer))
+        Me.resetAllButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer))
+        Me.resetAllButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.resetAllButton.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.resetAllButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.resetAllButton.Location = New System.Drawing.Point(12, 344)
         Me.resetAllButton.Name = "resetAllButton"
         Me.resetAllButton.Size = New System.Drawing.Size(247, 24)
         Me.resetAllButton.TabIndex = 6
         Me.resetAllButton.Text = "RESET ALL HOTKEYS TO DEFAULTS"
-        Me.resetAllButton.UseVisualStyleBackColor = True
+        Me.resetAllButton.UseVisualStyleBackColor = False
         '
         'hotKeySettings
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
+        Me.BackColor = System.Drawing.Color.FromArgb(CType(CType(30, Byte), Integer), CType(CType(30, Byte), Integer), CType(CType(48, Byte), Integer))
+        Me.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.ClientSize = New System.Drawing.Size(375, 375)
         Me.Controls.Add(Me.disableHKButton)
         Me.Controls.Add(Me.resetAllButton)

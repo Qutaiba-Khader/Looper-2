@@ -21,7 +21,8 @@
 
 # Output
 bin/Release/Looper 2.exe
-bin/Release/LooperFixTool.exe   (+ Everything64.dll)
+bin/Release/LooperFixTool.exe   (+ Everything.dll, 64-bit)
+bin/Release/Everything.dll      (32-bit, for main app)
 ```
 
 ## Architecture
@@ -58,6 +59,25 @@ Two background threads run continuously:
 - **Playlist Mode** — Plays events sequentially, respects repeat counts
 - **Shuffle Mode** — Randomized event order using pre-shuffled array
 
+## Dark Theme
+
+All windows use a unified dark theme. Key colors:
+- **Background:** `(30, 30, 48)` navy-dark
+- **Control panel:** `(37, 37, 64)` slightly lighter
+- **Input fields:** `(26, 26, 46)` darker
+- **Text:** `Color.White` (255,255,255) — never use grey for text
+- **Section headers/labels:** `(127, 219, 218)` teal
+- **Buttons (neutral):** BackColor `(51,51,51)`, Border `(85,85,85)`, FlatStyle.Flat
+- **Buttons (green/add):** BackColor `(42,90,74)`, Border `(68,170,136)`
+- **Buttons (red/delete):** BackColor `(74,42,42)`, Border `(136,85,85)`
+- **Buttons (blue/fix):** BackColor `(42,58,90)`, Border `(102,136,170)`
+- **Grid lines:** `(38, 38, 54)`
+- **Alt row:** `(34, 34, 54)` / Normal row: `(30, 30, 48)`
+
+All buttons use `FlatStyle.Flat` + `UseVisualStyleBackColor = False`. All checkboxes use `UseVisualStyleBackColor = False` to avoid white backgrounds. Icons use Segoe MDL2 Assets font (not Unicode emoji which render black on Windows).
+
+Note: WinForms disabled buttons render text near-black regardless of ForeColor — this is expected.
+
 ## Companion Tools
 
 ### Looper Fix Tool (`LooperFixTool/`)
@@ -68,8 +88,10 @@ WinForms utility that batch-fixes broken file paths in `.looper` files using Eve
 | `LooperFixTool/Program.vb` | Entry point, Application.Run |
 | `LooperFixTool/MainForm.vb` | GUI logic: drag-drop, add/remove, start/stop, threading |
 | `LooperFixTool/MainForm.Designer.vb` | Form layout: ListView, buttons, checkbox, progress bar |
-| `LooperFixTool/EverythingAPI.vb` | P/Invoke wrappers for Everything64.dll SDK |
+| `LooperFixTool/EverythingAPI.vb` | P/Invoke wrappers for Everything.dll SDK |
 | `LooperFixTool/LooperFixer.vb` | Core logic: parse .looper, search, match, replace paths, logging |
+
+**Everything DLL:** Both projects use `DllImport("Everything.dll")`. The main app (32-bit, Prefer32Bit=true) ships the 32-bit DLL; the Fix Tool (AnyCPU/64-bit) ships the 64-bit DLL. Same filename, different bitness.
 
 **Key behavior:**
 - Verifies Everything search results with `File.Exists()` to skip stale index entries
@@ -101,7 +123,7 @@ WinForms utility that batch-fixes broken file paths in `.looper` files using Eve
 | File | Purpose |
 |------|---------|
 | `ListViewColumnSorter.vb` | IComparer for sorting ListView columns (numeric, date, string) |
-| `ListViewDoubleBuffered.vb` | ListView subclass with `OptimizedDoubleBuffer` to prevent flicker |
+| `ListViewDoubleBuffered.vb` | Owner-drawn ListView: dark theme, bold bright headers, white column dividers, alternating row colors |
 
 ### Designer Files (auto-generated, do NOT hand-edit)
 | File | Purpose |
@@ -308,7 +330,8 @@ End Structure
 - Log file: `%LocalAppData%\Zach Glenwright's Looper 2\looper.log`
 - 2MB rotation (renames to `.old` when limit reached)
 - Format: `yyyy-MM-dd HH:mm:ss | message`
-- Logged events: startup, MPC-HC connect/disconnect, now playing, IN/OUT points, file operations
+- Logged events: startup, MPC-HC connect/disconnect, now playing, file fix operations, errors
+- Verbose per-event logs (IN/OUT points, addEvent, per-line fixer details) have been removed — keep logs lean
 
 ## Conventions
 

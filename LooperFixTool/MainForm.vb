@@ -112,7 +112,6 @@ Public Class MainForm
         Dim replaceOriginal = replaceOriginalCB.Checked
 
         ' Clear log for this run
-        LooperFixer.Log("")
         LooperFixer.Log("========== NEW RUN: " & fileListView.Items.Count & " files, replaceOriginal=" & replaceOriginal & " ==========")
 
         Dim files As New List(Of String)

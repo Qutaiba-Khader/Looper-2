@@ -46,6 +46,7 @@ Partial Class findLooperWindow
         '
         Me.looperTextHeader.AutoSize = True
         Me.looperTextHeader.Font = New System.Drawing.Font("Segoe UI Semibold", 14.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.looperTextHeader.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.looperTextHeader.Location = New System.Drawing.Point(142, 8)
         Me.looperTextHeader.Name = "looperTextHeader"
         Me.looperTextHeader.Size = New System.Drawing.Size(372, 25)
@@ -54,7 +55,8 @@ Partial Class findLooperWindow
         '
         'looperTextDescription
         '
-        Me.looperTextDescription.BackColor = System.Drawing.SystemColors.Control
+        Me.looperTextDescription.BackColor = System.Drawing.Color.FromArgb(CType(CType(30, Byte), Integer), CType(CType(30, Byte), Integer), CType(CType(48, Byte), Integer))
+        Me.looperTextDescription.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.looperTextDescription.BorderStyle = System.Windows.Forms.BorderStyle.None
         Me.looperTextDescription.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.looperTextDescription.Location = New System.Drawing.Point(145, 34)
@@ -67,16 +69,22 @@ Partial Class findLooperWindow
         '
         'MPCEXEPathButton
         '
+        Me.MPCEXEPathButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer), CType(CType(51, Byte), Integer))
+        Me.MPCEXEPathButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer), CType(CType(85, Byte), Integer))
+        Me.MPCEXEPathButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
+        Me.MPCEXEPathButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.MPCEXEPathButton.Location = New System.Drawing.Point(13, 157)
         Me.MPCEXEPathButton.Name = "MPCEXEPathButton"
         Me.MPCEXEPathButton.Size = New System.Drawing.Size(30, 27)
         Me.MPCEXEPathButton.TabIndex = 4
         Me.MPCEXEPathButton.Text = "..."
-        Me.MPCEXEPathButton.UseVisualStyleBackColor = True
+        Me.MPCEXEPathButton.UseVisualStyleBackColor = False
         '
         'MPCEXEPathTF
         '
         Me.MPCEXEPathTF.AutoSize = True
+        Me.MPCEXEPathTF.BackColor = System.Drawing.Color.FromArgb(CType(CType(26, Byte), Integer), CType(CType(26, Byte), Integer), CType(CType(46, Byte), Integer))
+        Me.MPCEXEPathTF.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.MPCEXEPathTF.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle
         Me.MPCEXEPathTF.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
         Me.MPCEXEPathTF.Location = New System.Drawing.Point(47, 158)
@@ -92,7 +100,7 @@ Partial Class findLooperWindow
         '
         Me.MPCEXELabel.AutoSize = True
         Me.MPCEXELabel.Font = New System.Drawing.Font("Segoe UI Semibold", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.MPCEXELabel.ForeColor = System.Drawing.SystemColors.ButtonShadow
+        Me.MPCEXELabel.ForeColor = System.Drawing.Color.FromArgb(CType(CType(127, Byte), Integer), CType(CType(219, Byte), Integer), CType(CType(218, Byte), Integer))
         Me.MPCEXELabel.Location = New System.Drawing.Point(45, 187)
         Me.MPCEXELabel.Name = "MPCEXELabel"
         Me.MPCEXELabel.Size = New System.Drawing.Size(155, 13)
@@ -101,20 +109,26 @@ Partial Class findLooperWindow
         '
         'saveChangesButton
         '
+        Me.saveChangesButton.BackColor = System.Drawing.Color.FromArgb(CType(CType(42, Byte), Integer), CType(CType(90, Byte), Integer), CType(CType(74, Byte), Integer))
         Me.saveChangesButton.Enabled = False
+        Me.saveChangesButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(CType(CType(68, Byte), Integer), CType(CType(170, Byte), Integer), CType(CType(136, Byte), Integer))
+        Me.saveChangesButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat
         Me.saveChangesButton.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.saveChangesButton.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.saveChangesButton.Location = New System.Drawing.Point(376, 191)
         Me.saveChangesButton.Name = "saveChangesButton"
         Me.saveChangesButton.Size = New System.Drawing.Size(216, 28)
         Me.saveChangesButton.TabIndex = 6
         Me.saveChangesButton.Text = "Save Changes and Run Looper"
-        Me.saveChangesButton.UseVisualStyleBackColor = True
+        Me.saveChangesButton.UseVisualStyleBackColor = False
         '
         'findLooperWindow
         '
         Me.AcceptButton = Me.saveChangesButton
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
+        Me.BackColor = System.Drawing.Color.FromArgb(CType(CType(30, Byte), Integer), CType(CType(30, Byte), Integer), CType(CType(48, Byte), Integer))
+        Me.ForeColor = System.Drawing.Color.FromArgb(CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer), CType(CType(255, Byte), Integer))
         Me.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch
         Me.ClientSize = New System.Drawing.Size(602, 228)
         Me.Controls.Add(Me.saveChangesButton)

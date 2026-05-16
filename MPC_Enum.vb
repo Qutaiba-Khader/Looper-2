@@ -3,13 +3,38 @@
     ' ================= LOOPER CONSTANTS AND ENUMS =========================================
     ' ======================================================================================
     Public ReadOnly INIFile As String = Environment.GetEnvironmentVariable("LocalAppData") & "\Zach Glenwright's Looper 2\MPCLooper.ini"
+    Public ReadOnly LogFile As String = Environment.GetEnvironmentVariable("LocalAppData") & "\Zach Glenwright's Looper 2\looper.log"
+
+    Public Sub Log(message As String)
+        Try
+            If System.IO.File.Exists(LogFile) Then
+                Dim fi As New System.IO.FileInfo(LogFile)
+                If fi.Length > 2 * 1024 * 1024 Then ' 2MB limit
+                    System.IO.File.Delete(LogFile & ".old")
+                    System.IO.File.Move(LogFile, LogFile & ".old")
+                End If
+            End If
+            System.IO.File.AppendAllText(LogFile, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") & " | " & message & vbCrLf)
+        Catch
+        End Try
+    End Sub
     Public pausePlaybackOnLoadEvent As Boolean = False ' whether to force pause when loading new events instead of playing them
     Public skipSaveConfirmations As Boolean = False ' whether to skip all save confirmation dialogs
     Public skipEventNameEditor As Boolean = False ' whether to skip the event name editor when adding events
     Public autoSaveLooper As Boolean = False ' whether to automatically save the looper file on changes
     Public defaultLooperSavePath As String = Nothing ' default directory for saving .looper files
-    Public clearPointsAfterAdd As Boolean = False ' whether to clear IN/OUT points after adding an event
-    Public hotKeyDisabled(44) As Boolean ' per-hotkey disabled state (index 0-44, maps to hotkey IDs 100-144)
+    Public autoCreateEventOnOut As Boolean = False ' whether to auto-create event when OUT point is set
+    Public osdOnInPoint As Boolean = False
+    Public osdOnOutPoint As Boolean = False
+    Public osdOnAddEvent As Boolean = False
+    Public osdOnLoopModeChange As Boolean = False
+    Public osdOnSave As Boolean = False
+    Public hotKeyDisabled() As Boolean = {
+        False, False, False, False, False, True, True, True, True, True,
+        True, True, True, False, True, True, True, True, True, False,
+        True, True, False, False, False, False, True, True, False, False,
+        True, True, True, True, True, True
+    } ' per-hotkey disabled state (index 0-35, maps to hotkey IDs 100-135)
 
     Enum KeyModifier
         None = 0
@@ -44,7 +69,7 @@
         CMD_SETSPEED = &HA0004008
         CMD_TOGGLEFULLSCREEN = &HA0004000
         CMD_CLOSEAPP = &HA0004006
-        CMD_SETPANSCAN = &HA0004009
+        CMD_OSDSHOWMESSAGE = &HA0005000
         ' ---------------- INFO COMMANDS ----------------
         CMD_GETNOWPLAYING = &HA0003002
         CMD_GETCURRENTPOSITION = &HA0003004

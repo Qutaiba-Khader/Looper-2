@@ -39,7 +39,7 @@ Looper launches MPC-HC with `/slave <hWnd>` flag. MPC-HC sends `WM_COPYDATA` mes
 - `CMD_GETNOWPLAYING` (0xA0003002) — Request file info
 - `CMD_PLAY/PAUSE/STOP` — Playback control
 - `CMD_SETSPEED` (0xA0004008) — Speed control
-- `CMD_SETPANSCAN` (0xA0004009) — Pan/scan/zoom
+- `CMD_OSDSHOWMESSAGE` (0xA0005000) — Show OSD text (uses binary `MPC_OSDDATA` struct)
 
 ### Threading Model
 
@@ -59,7 +59,7 @@ Two background threads run continuously:
 ### Core Forms
 | File | Lines | Purpose |
 |------|-------|---------|
-| `mainWindow.vb` | ~1567 | Main control panel: IPC, hotkeys, IN/OUT points, speed, pan/scan, loop logic |
+| `mainWindow.vb` | ~1567 | Main control panel: IPC, hotkeys, IN/OUT points, speed, OSD, loop logic |
 | `playlistWindow.vb` | ~1684 | Event list management: load/save .looper files, search, drag-drop, auto-save |
 | `optionsWindow.vb` | ~350 | Preferences dialog: loads/saves INI, all settings checkboxes |
 | `hotKeySettings.vb` | ~215 | Hotkey customization: per-key disable, multi-select, reassign |
@@ -68,7 +68,7 @@ Two background threads run continuously:
 ### Modules (no UI)
 | File | Purpose |
 |------|---------|
-| `MPC_Enum.vb` | Global constants, enums (CMD_SEND, CMD_RECEIVED, KeyModifier), global settings variables |
+| `MPC_Enum.vb` | Global constants, enums (CMD_SEND, CMD_RECEIVED, KeyModifier), global settings variables, Log() function |
 | `stringWork.vb` | `betweenTheLines()` INI parser, `removeSection()`, `removeParams()` |
 | `timeConversions.vb` | `NumberToTimeString()` / `TimeStringToNumber()` — time ↔ seconds conversion |
 | `ToolTips.vb` | `loadToolTips()` — sets all tooltip strings for both windows |
@@ -94,14 +94,20 @@ Two background threads run continuously:
 
 All settings are public module-level fields:
 ```
-INIFile             — path to MPCLooper.ini
+INIFile                  — path to MPCLooper.ini
+LogFile                  — path to looper.log (2MB rotation)
 pausePlaybackOnLoadEvent — force pause when loading events
 skipSaveConfirmations    — bypass all save/quit dialogs
 skipEventNameEditor      — auto-name events without editor
 autoSaveLooper           — auto-save .looper on changes
-defaultLooperSavePath    — default save directory
-clearPointsAfterAdd      — clear IN/OUT after adding event
-hotKeyDisabled(44)       — per-hotkey disabled state array
+defaultLooperSavePath    — default save directory (supports %ENV_VAR% paths)
+autoCreateEventOnOut     — auto-create event when OUT point is set
+osdOnInPoint             — show OSD on Set In Point
+osdOnOutPoint            — show OSD on Set Out Point
+osdOnAddEvent            — show OSD on Add Event
+osdOnLoopModeChange      — show OSD on loop mode change
+osdOnSave                — show OSD on save
+hotKeyDisabled(35)       — per-hotkey disabled state array (IDs 100-135)
 ```
 
 ### INI File Format
@@ -117,8 +123,13 @@ disableHotkeys=1
 skipSaveConfirmations=1
 skipEventNameEditor=1
 autoSaveLooper=1
-clearPointsAfterAdd=1
-defaultLooperSavePath=C:\MyLoops
+autoCreateEventOnOut=1
+osdOnInPoint=1
+osdOnOutPoint=1
+osdOnAddEvent=1
+osdOnLoopModeChange=1
+osdOnSave=1
+defaultLooperSavePath=%USERPROFILE%\OneDrive\Desktop\Loops
 autoloadLastLooper=C:\file.looper|3
 newEventName=[#] [F]
 
@@ -159,7 +170,7 @@ D100=1
 
 ## Event ListView Structure
 
-Each event is a `ListViewItem` with 12 sub-items (index 0-11):
+Each event is a `ListViewItem` with sub-items:
 
 | Index | Field | Example |
 |-------|-------|---------|
@@ -170,28 +181,24 @@ Each event is a `ListViewItem` with 12 sub-items (index 0-11):
 | 4 | IN Point | `1:23.456` |
 | 5 | OUT Point | `2:34.567` |
 | 6 | Duration (calculated) | `1:11.111` |
-| 7 | X Position (pan) | `0.5` |
-| 8 | Y Position (pan) | `0.5` |
-| 9 | X Zoom | `1.0` |
-| 10 | Y Zoom | `1.0` |
 | 11 | File Path | `C:\video.mp4` |
 
 ## .looper File Format
 
-One event per line, pipe-delimited. Optional prefix tags `<S:speed>`, `<L:loops>`, `<Z:xP,yP,xZ,yZ>` before the event name:
+One event per line, pipe-delimited. Optional prefix tags `<S:speed>`, `<L:loops>` before the event name. `<Z:>` tags are read for backward compatibility but no longer written:
 
 ```
-<S:75><L:3><Z:0.5,0.5,1.2,1.2>Chorus|1:23.456|2:34.567|C:\video.mp4
+<S:75><L:3>Chorus|1:23.456|2:34.567|C:\video.mp4
 Bridge|3:00.000|3:30.000|C:\video.mp4
 ```
 
 ## Hotkey System
 
-- 45 hotkeys (IDs 100-144), defined in `mainWindow.hotKeyList(,)` array
+- 36 hotkeys (IDs 100-135), defined in `mainWindow.hotKeyList(,)` array
 - Format: `"modifiers|keycode"` — modifiers: C=Ctrl, S=Shift, A=Alt
 - Registered via Win32 `RegisterHotKey` / `UnregisterHotKey`
 - Only active when Looper, playlist, or MPC-HC window is foreground
-- Per-hotkey disable via `hotKeyDisabled()` array, stored as `D<id>=1` in INI
+- Per-hotkey disable via `hotKeyDisabled()` array (initialized with defaults), stored as `D<id>=1` in INI
 
 ## Key Function Reference
 
@@ -203,14 +210,14 @@ Bridge|3:00.000|3:30.000|C:\video.mp4
 | `loadINIFile()` | ~528 | Full INI load with all settings |
 | `loadINIFileForDefaults()` | ~620 | Minimal INI load (MPC-HC path only) |
 | `SendMessage()` | ~157 | Send WM_COPYDATA command to MPC-HC |
-| `setInPoint()` | ~1269 | Capture current position as IN point |
-| `setOutPoint()` | ~1281 | Capture current position as OUT point |
+| `SendOSD()` | ~160 | Send OSD message via binary MPC_OSDDATA struct (position, duration, text) |
+| `setInPoint()` | ~1250 | Capture current position as IN point |
+| `setOutPoint()` | ~1257 | Capture current position as OUT point |
 | `assignHotKey()` | ~668 | Register single hotkey with Windows |
-| `setHotKeys()` | ~688 | Register all 45 hotkeys |
+| `setHotKeys()` | ~688 | Register all 36 hotkeys |
 | `clearHotKeys()` | ~755 | Unregister all hotkeys |
 | `handleHotKeyEvent()` | ~823 | Dispatch hotkey ID to action |
 | `setSpeed()` | ~1387 | Set MPC-HC playback speed |
-| `setPanScan()` | ~1500 | Set MPC-HC pan/scan/zoom |
 | `doTheLoop()` | ~471 | Background thread: poll position every 30ms |
 | `isForeground()` | ~485 | Background thread: check active window every 50ms |
 
@@ -225,9 +232,9 @@ Bridge|3:00.000|3:30.000|C:\video.mp4
 | `addEvent()` (public) | ~757 | Add new event from current IN/OUT/speed |
 | `addEvent()` (private) | ~714 | Add event from parsed .looper file data |
 | `deleteEvents()` | ~827 | Delete selected events with confirmation |
-| `modifyEvent()` | ~919 | Update event with current IN/OUT/speed/pan |
+| `modifyEvent()` | ~919 | Update event with current IN/OUT/speed |
 | `mergeEvents()` | ~982 | Merge contiguous selected events into one |
-| `loadEvent()` | ~1048 | Load specific event (seek + set speed + pan) |
+| `loadEvent()` | ~1048 | Load specific event (seek + set speed) |
 | `loadPrevNextEvent()` | ~1125 | Navigate to next/prev event in playlist |
 | `findFile()` | ~368 | Relocate missing files dialog |
 | `doSearch()` | ~1357 | Filter events by name/path/ID |
@@ -254,6 +261,31 @@ Bridge|3:00.000|3:30.000|C:\video.mp4
 | `NumberToTimeString()` | ~6 | Convert seconds (Double) → `H:MM:SS.mmm` string |
 | `TimeStringToNumber()` | ~42 | Convert `H:MM:SS.mmm` string → seconds (Double) |
 
+## OSD System
+
+Uses MPC-HC's `CMD_OSDSHOWMESSAGE` (0xA0005000) with a binary struct (NOT pipe-delimited text):
+
+```vb
+<StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Unicode)>
+Public Structure MPC_OSDDATA
+    Public nMsgPos As Integer        ' 0=clear, 1=top-left, 2=top-right
+    Public nDurationMS As Integer    ' milliseconds (default 1500)
+    <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=128)>
+    Public strMsg As String          ' max 127 chars
+End Structure
+```
+
+- Only one OSD message visible at a time (each replaces the previous)
+- When auto-chain fires (OUT → Add → Save), messages are combined: `"Event Added: name — Saved"`
+- The Out Point OSD is suppressed when `autoCreateEventOnOut` is enabled
+
+## Logging
+
+- Log file: `%LocalAppData%\Zach Glenwright's Looper 2\looper.log`
+- 2MB rotation (renames to `.old` when limit reached)
+- Format: `yyyy-MM-dd HH:mm:ss | message`
+- Logged events: startup, MPC-HC connect/disconnect, now playing, IN/OUT points, file operations
+
 ## Conventions
 
 - INI parser: always use `betweenTheLines(fileReader, "key=", vbCrLf, default)` — returns default if key missing
@@ -263,3 +295,4 @@ Bridge|3:00.000|3:30.000|C:\video.mp4
 - All MessageBox calls in playlistWindow use `ShowTopMostMessageBox()` helper
 - All MessageBox calls in optionsWindow/hotKeySettings pass `Me` as owner
 - `BeginUpdate()`/`EndUpdate()` wrap any batch ListView operations
+- Environment variables in paths: use `Environment.ExpandEnvironmentVariables()` when loading from INI

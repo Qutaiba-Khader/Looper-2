@@ -47,7 +47,8 @@ Summary of all modifications made to the original Looper 2 codebase.
 ## New Features
 
 ### 1. Per-Hotkey Disable/Enable
-- Added `hotKeyDisabled(44)` array to track per-hotkey disabled state.
+- Added `hotKeyDisabled()` array (36 elements, initialized with defaults: 13 enabled, 23 disabled) to track per-hotkey state.
+- Hotkey 104 remapped from `Ctrl+X` to `Ctrl+Numpad7`.
 - Hotkey Settings list view now supports **multi-select** for batch operations.
 - Added **DISABLE/ENABLE** button to toggle selected hotkeys.
 - Disabled hotkeys show `[DISABLED]` prefix, gray text, and light background.
@@ -69,14 +70,26 @@ Summary of all modifications made to the original Looper 2 codebase.
 - Uses efficient `StringBuilder`-based serialization with `FileStream` for performance.
 - Only triggers if a file is already loaded (doesn't prompt for new files).
 
-### 5. Clear IN/OUT Points After Adding Event
-- New option: **"Clear IN/OUT points after adding an event"** (`clearPointsAfterAdd`).
-- Resets both IN and OUT fields after adding, ready for the next loop capture.
+### 5. Auto-Create Event on Set OUT Point
+- New option: **"Auto-create event on Set Out Point"** (`autoCreateEventOnOut`).
+- When enabled, setting the OUT point automatically triggers Add Event (and auto-save if enabled).
 
-### 6. Default .looper Save Path
+### 6. OSD Notifications
+- Added on-screen display notifications via MPC-HC's `CMD_OSDSHOWMESSAGE` using the binary `MPC_OSDDATA` struct.
+- Configurable per-action: In Point, Out Point, Event Added, Loop Mode Change, Looper Saved.
+- Uses 1.5 second display duration, top-left position.
+- When auto-chain fires (OUT → Add → Save), messages are combined into one: `"Event Added: name — Saved"`.
+- Out Point OSD suppressed when `autoCreateEventOnOut` is active to avoid flicker.
+
+### 7. Logging System
+- Added `Log()` function in `MPC_Enum.vb` with 2MB file rotation.
+- Log file: `%LocalAppData%\Zach Glenwright's Looper 2\looper.log`
+- Logs: startup, MPC-HC connect/disconnect, now playing, IN/OUT points, file open operations.
+
+### 8. Default .looper Save Path
 - New option: **"Default .looper Save Location"** with a text field and Browse button.
 - When set, the Save dialog defaults to this directory instead of requiring navigation each time.
-- Persisted as `defaultLooperSavePath=<path>` in INI.
+- Persisted as `defaultLooperSavePath=<path>` in INI (supports `%USERPROFILE%` and other env vars).
 
 ### 7. Real-Time Search Filter (playlistWindow.vb)
 - Search now filters **as you type** (live `TextChanged` handler) instead of requiring Enter.
@@ -88,6 +101,22 @@ Summary of all modifications made to the original Looper 2 codebase.
 ### 8. Smarter Missing File Relocator (playlistWindow.vb)
 - The file picker now starts in the **original file's directory** (if it still exists) or the last-found path, instead of always defaulting to Desktop.
 - The file picker pre-fills the **filename** in the dialog for easier identification.
+
+---
+
+## Removed Features
+
+### 1. Pan/Scan/Zoom (Removed)
+- Removed all pan/scan/zoom functionality: variables, UI controls, hotkeys (IDs 136-144), save/load logic.
+- `<Z:>` tags in .looper files are still read for backward compatibility but are no longer written.
+- Hotkey count reduced from 45 (IDs 100-144) to 36 (IDs 100-135).
+
+### 2. Clear IN/OUT Points After Adding Event (Removed)
+- Removed `clearPointsAfterAdd` option and checkbox — unnecessary with the new auto-create workflow.
+
+### 3. Folder Icon Behavior Changed
+- Previously showed the current media file in Explorer.
+- Now opens the .looper file picker dialog (defaulting to `defaultLooperSavePath`).
 
 ---
 

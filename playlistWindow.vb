@@ -264,7 +264,8 @@ Public Class playlistWindow
 
                 Using looperFileDialog As New OpenFileDialog With {
                     .Title = openDialogTitle,
-                    .Filter = "Looper files|*.looper"
+                    .Filter = "Looper files|*.looper",
+                    .InitialDirectory = If(defaultLooperSavePath IsNot Nothing, defaultLooperSavePath, "")
                 }
 
                     If looperFileDialog.ShowDialog = DialogResult.OK Then ' if we cancelled, this value will remain Nothing, and then nothing below will trigger
@@ -532,21 +533,6 @@ Public Class playlistWindow
                                 writeString = writeString & "<L:" & eventsList.Items(savingList(a)).SubItems(3).Text & ">"
                             End If
 
-                            ' Check to make sure the default values aren't currently selected
-                            Dim xPosTest, yPosTest, xZoomTest, yZoomTest As Double
-
-                            Double.TryParse(eventsList.Items(savingList(a)).SubItems(7).Text, xPosTest)
-                            Double.TryParse(eventsList.Items(savingList(a)).SubItems(8).Text, yPosTest)
-                            Double.TryParse(eventsList.Items(savingList(a)).SubItems(9).Text, xZoomTest)
-                            Double.TryParse(eventsList.Items(savingList(a)).SubItems(10).Text, yZoomTest)
-
-                            ' If the default scaling parameters are different, then we need to save the current pan/scan to the event
-                            If Not (xPosTest = 0.5 And yPosTest = 0.5 And xZoomTest = 1.0 And yZoomTest = 1.0) Then
-                                writeString = writeString & "<Z:" & eventsList.Items(savingList(a)).SubItems(7).Text &
-                                                              "," & eventsList.Items(savingList(a)).SubItems(8).Text &
-                                                              "," & eventsList.Items(savingList(a)).SubItems(9).Text &
-                                                              "," & eventsList.Items(savingList(a)).SubItems(10).Text & ">"
-                            End If
 
                             writeString = writeString & eventsList.Items(savingList(a)).SubItems(1).Text & "|" &
                             eventsList.Items(savingList(a)).SubItems(4).Text & "|" &
@@ -566,6 +552,7 @@ Public Class playlistWindow
                     If saveSubset = False Then ' if we are saving or saving a new Looper file, then show it - otherwise, you just saved a subclip
                         currentLooperFile = savefile ' change the current looper file name
                         setIsModified(0) ' we saved a file, so we're no longer in modified state
+                        If osdOnSave Then mainWindow.SendOSD("Looper Saved")
 
                         For a As Integer = 0 To eventsList.Items.Count - 1
                             If eventsList.Items(a).BackColor <> errorColor Then ' only if the events aren't red (missing)
@@ -755,6 +742,7 @@ Public Class playlistWindow
     End Sub
 
     Public Sub addEvent()
+        Log("addEvent called, currentPlayingFile=" & If(mainWindow.currentPlayingFile, "Nothing"))
         If mainWindow.currentPlayingFile <> Nothing Then ' if MPC-HC isn't playing anything, then don't DO anything
             If inSearchMode = True Then
                 restoreFromSearch() 'if we're in Search mode and decide to add an event, get out of Search mode first
@@ -778,7 +766,7 @@ Public Class playlistWindow
 
             ' add the event to the events list
             Dim newEvent = returnListViewItem(newEventName, mainWindow.speedSlider.Value.ToString, "1", mainWindow.inTF.Text, mainWindow.outTF.Text,
-                                              mainWindow.currentPlayingFile, mainWindow.xPosTF.Text, mainWindow.yPosTF.Text, mainWindow.xZoomTF.Text, mainWindow.yZoomTF.Text)
+                                              mainWindow.currentPlayingFile)
             Dim newIndex As Integer
 
             If insertItem = True Then
@@ -813,13 +801,16 @@ Public Class playlistWindow
                 editListViewItem(newIndex) ' go into the text editor
             End If
 
-            If clearPointsAfterAdd Then
-                mainWindow.clearInPoint() ' reset IN point for next event
-                mainWindow.clearOutPoint() ' reset OUT point for next event
+            Dim didAutoSave As Boolean = False
+            If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                autoSaveCurrentFile(True) ' auto-save after adding event, suppress OSD
+                didAutoSave = True
             End If
 
-            If autoSaveLooper And currentLooperFile IsNot Nothing Then
-                autoSaveCurrentFile() ' auto-save after adding event
+            If osdOnAddEvent OrElse (osdOnSave AndAlso didAutoSave) Then
+                Dim osdMsg As String = "Event Added: " & eventsList.Items(newIndex).SubItems(1).Text
+                If didAutoSave AndAlso osdOnSave Then osdMsg &= " — Saved"
+                mainWindow.SendOSD(osdMsg)
             End If
         End If
     End Sub
@@ -926,10 +917,6 @@ Public Class playlistWindow
             eventsList.Items(theEvent).SubItems(4).Text = mainWindow.inTF.Text ' the new IN point for this event
             eventsList.Items(theEvent).SubItems(5).Text = mainWindow.outTF.Text ' the new OUT point for this event
             eventsList.Items(theEvent).SubItems(6).Text = NumberToTimeString(TimeStringToNumber(mainWindow.outTF.Text) - TimeStringToNumber(mainWindow.inTF.Text)) ' the new duration for this event
-            eventsList.Items(theEvent).SubItems(7).Text = mainWindow.xPosTF.Text ' the new X offset for this event
-            eventsList.Items(theEvent).SubItems(8).Text = mainWindow.yPosTF.Text ' the new Y offset for this event
-            eventsList.Items(theEvent).SubItems(9).Text = mainWindow.xZoomTF.Text ' the new X zoom for this event
-            eventsList.Items(theEvent).SubItems(10).Text = mainWindow.yZoomTF.Text ' the new Y zoom for this event
 
             setIsModified(1) ' we've modified the event
             tallyTotalList() ' re-tabulate the event list tally
@@ -940,7 +927,7 @@ Public Class playlistWindow
         End If
     End Sub
 
-    Private Sub autoSaveCurrentFile()
+    Private Sub autoSaveCurrentFile(Optional suppressOSD As Boolean = False)
         ' Silently save the current looper file without any dialogs
         If currentLooperFile IsNot Nothing And eventsList.Items.Count > 0 Then
             Dim sb As New System.Text.StringBuilder(eventsList.Items.Count * 120) ' pre-allocate buffer
@@ -949,19 +936,10 @@ Public Class playlistWindow
                 Dim item = eventsList.Items(a)
                 Dim speed = item.SubItems(2).Text
                 Dim repeats = item.SubItems(3).Text
-                Dim xP = item.SubItems(7).Text
-                Dim yP = item.SubItems(8).Text
-                Dim xZ = item.SubItems(9).Text
-                Dim yZ = item.SubItems(10).Text
 
                 If speed <> "100" Then sb.Append("<S:").Append(speed).Append(">")
                 If repeats <> "1" Then sb.Append("<L:").Append(repeats).Append(">")
 
-                ' Compare strings directly to avoid Double.TryParse overhead
-                If Not (xP = "0.5" And yP = "0.5" And xZ = "1" And yZ = "1") AndAlso
-                   Not (xP = "0.5" And yP = "0.5" And xZ = "1.0" And yZ = "1.0") Then
-                    sb.Append("<Z:").Append(xP).Append(",").Append(yP).Append(",").Append(xZ).Append(",").Append(yZ).Append(">")
-                End If
 
                 sb.Append(item.SubItems(1).Text).Append("|")
                 sb.Append(item.SubItems(4).Text).Append("|")
@@ -976,6 +954,7 @@ Public Class playlistWindow
             End Using
 
             setIsModified(0) ' we just saved, so clear the modified flag
+            If osdOnSave AndAlso Not suppressOSD Then mainWindow.SendOSD("Looper Saved")
         End If
     End Sub
 
@@ -1086,25 +1065,15 @@ Public Class playlistWindow
 
                     mainWindow.loadingEvent = True
                     Integer.TryParse(eventsList.Items(selecteditem).SubItems(2).Text, mainWindow.loadingEvent_Speed)
-                    Double.TryParse(eventsList.Items(selecteditem).SubItems(7).Text, mainWindow.loadingEvent_xPos)
-                    Double.TryParse(eventsList.Items(selecteditem).SubItems(8).Text, mainWindow.loadingEvent_yPos)
-                    Double.TryParse(eventsList.Items(selecteditem).SubItems(9).Text, mainWindow.loadingEvent_xZoom)
-                    Double.TryParse(eventsList.Items(selecteditem).SubItems(10).Text, mainWindow.loadingEvent_yZoom)
                 Else
                     ' do we need to do anything here?
                 End If
             Else ' we're still working with the same file
                 Dim theSpeed As Integer
-                Dim xZoom, yZoom, xPos, yPos As Double
 
                 Integer.TryParse(eventsList.Items(selecteditem).SubItems(2).Text, theSpeed)
-                Double.TryParse(eventsList.Items(selecteditem).SubItems(7).Text, xPos)
-                Double.TryParse(eventsList.Items(selecteditem).SubItems(8).Text, yPos)
-                Double.TryParse(eventsList.Items(selecteditem).SubItems(9).Text, xZoom)
-                Double.TryParse(eventsList.Items(selecteditem).SubItems(10).Text, yZoom)
 
                 mainWindow.SendMessage(CMD_SEND.CMD_SETPOSITION, CStr(TimeStringToNumber(eventsList.Items(selecteditem).SubItems(4).Text) - 0.5))
-                mainWindow.setPanScan(5, 0, xPos, yPos, xZoom, yZoom)
                 mainWindow.setSpeed(theSpeed)
 
                 stilLLoading = False

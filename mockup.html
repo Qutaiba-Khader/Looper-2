@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Looper 2 - Design</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', sans-serif; background: #111; color: #eee; padding: 30px; }
+h2 { margin: 50px 0 12px; color: #7fdbda; border-bottom: 1px solid #333; padding-bottom: 8px; font-size: 15px; }
+h2:first-of-type { margin-top: 20px; }
+.desc { font-size: 12px; color: #666; margin-bottom: 12px; }
+
+.btn { font-size: 10px; padding: 4px 10px; background: #333; border: 1px solid #555; color: #ccc; border-radius: 3px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+.btn:hover { background: #444; color: #fff; }
+.btn-accent { background: #2a5a4a; border-color: #4a8; color: #8fc; }
+.btn-mode { font-weight: bold; padding: 5px 14px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+.btn-danger { background: #4a2a2a; border-color: #855; color: #faa; }
+.input-dark { font-size: 11px; padding: 4px 6px; background: #1a1a2e; border: 1px solid #444; color: #eee; border-radius: 3px; text-align: center; }
+.search-input { font-size: 11px; padding: 5px 10px; background: #1a1a2e; border: 1px solid #444; color: #eee; border-radius: 3px; width: 100%; }
+.speed-control { display: flex; align-items: center; gap: 2px; }
+.speed-control .speed-val { font-size: 11px; font-weight: bold; color: #7fdbda; background: #1a1a2e; border: 1px solid #444; padding: 3px 8px; border-radius: 3px; min-width: 42px; text-align: center; }
+.speed-control .speed-btn { font-size: 10px; padding: 3px 6px; background: #333; border: 1px solid #555; color: #ccc; cursor: pointer; border-radius: 2px; }
+
+.window { background: #1e1e30; border: 1px solid #333; width: 620px; border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+.controls-row { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #252540; border-bottom: 1px solid #333; }
+.controls-row .point-group { display: flex; align-items: center; gap: 3px; }
+.controls-row .point-group .label { font-size: 9px; font-weight: bold; color: #888; }
+.controls-row .divider { width: 1px; height: 20px; background: #444; }
+.filter-bar { display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #1a1a2e; border-bottom: 1px solid #2a2a3a; }
+.filter-bar .filter-icon { color: #555; font-size: 12px; }
+.filter-bar .result-count { font-size: 10px; color: #555; }
+.filter-bar .clear-filter { font-size: 10px; color: #f88; cursor: pointer; padding: 2px 6px; background: #3a2020; border-radius: 3px; border: 1px solid #533; }
+.playlist { max-height: 260px; overflow-y: auto; }
+.playlist.tall { max-height: 340px; }
+.dark-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.dark-table th { background: #1a1a2e; padding: 5px 8px; text-align: left; font-size: 10px; color: #555; border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 1; }
+.dark-table td { padding: 5px 8px; border-bottom: 1px solid #262636; }
+.dark-table tr:hover { background: #2a2a40; }
+.dark-table tr.playing { background: #1a3a2a; }
+.dark-table tr.playing td { color: #8f8; }
+.dark-table tr.missing { background: #3a1a1a; }
+.dark-table tr.missing td { color: #f88; }
+.dark-table tr.missing td.file-cell { color: #f66; font-style: italic; }
+.bottom-bar { display: flex; align-items: center; gap: 5px; padding: 7px 12px; background: #252540; border-top: 1px solid #333; }
+
+/* Mode colors */
+.mode-off { background: #2a2a2a; border: 1px solid #555; color: #888; }
+.mode-loop { background: #2a4a3a; border: 1px solid #4a8; color: #8fc; }
+.mode-playlist { background: #2a2a5a; border: 1px solid #66a; color: #aaf; }
+.mode-shuffle { background: #4a2a4a; border: 1px solid #a6a; color: #faf; }
+
+/* Settings */
+.settings-window { background: #1e1e30; border: 1px solid #333; width: 520px; border-radius: 6px; overflow: hidden; }
+.settings-header { padding: 10px 14px; background: #252540; border-bottom: 1px solid #333; font-size: 13px; font-weight: bold; color: #7fdbda; display: flex; align-items: center; gap: 8px; }
+.settings-body { padding: 16px; display: flex; gap: 24px; }
+.settings-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.section-title { font-size: 10px; font-weight: bold; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; margin-bottom: 2px; border-bottom: 1px solid #2a2a3a; padding-bottom: 3px; }
+.section-title:first-child { margin-top: 0; }
+.checkbox-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #ccc; cursor: pointer; padding: 1px 0; }
+.checkbox-row input[type="checkbox"] { accent-color: #4a8; width: 13px; height: 13px; }
+.settings-input-row { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+.settings-input-row label { font-size: 10px; color: #888; font-weight: bold; }
+.settings-input-row .row { display: flex; gap: 4px; }
+.settings-input-row input { flex: 1; font-size: 10px; padding: 4px 6px; background: #1a1a2e; border: 1px solid #444; color: #aaa; border-radius: 3px; }
+.settings-input-row .small-input { width: 60px; flex: none; text-align: center; }
+.settings-input-row button { font-size: 10px; padding: 4px 8px; background: #333; border: 1px solid #555; color: #ccc; border-radius: 3px; cursor: pointer; }
+.settings-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #252540; border-top: 1px solid #333; }
+.settings-footer .btn-save { background: #2a5a4a; border-color: #4a8; color: #8fc; font-weight: bold; padding: 6px 20px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<!-- ==================== NORMAL STATE ==================== -->
+<h2>Normal — Loop Mode active, event playing</h2>
+
+<div class="window">
+  <div class="controls-row">
+    <button class="btn-mode mode-loop">LOOP</button>
+    <div class="divider"></div>
+    <div class="point-group">
+      <span class="label">IN</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="1:23.456">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="point-group">
+      <span class="label">OUT</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="3:12.789">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <div class="speed-control">
+      <button class="speed-btn">-</button>
+      <span class="speed-val">100%</span>
+      <button class="speed-btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn">⚙</button>
+    <button class="btn">📂</button>
+    <button class="btn">📌</button>
+  </div>
+  <div class="filter-bar">
+    <span class="filter-icon">🔍</span>
+    <input class="search-input" placeholder="Filter events..." style="flex:1;">
+  </div>
+  <div class="playlist tall">
+    <table class="dark-table">
+      <thead><tr><th>#</th><th>Event Name</th><th>Spd</th><th>×</th><th>IN</th><th>OUT</th><th>Duration</th><th>File</th></tr></thead>
+      <tbody>
+        <tr><td>100</td><td>Intro Loop</td><td>100</td><td>1</td><td>0:00.000</td><td>0:45.200</td><td>0:45.200</td><td>scene_01.mp4</td></tr>
+        <tr class="playing"><td>101</td><td>Chorus A</td><td>75</td><td>3</td><td>1:23.456</td><td>2:34.567</td><td>1:11.111</td><td>scene_01.mp4</td></tr>
+        <tr><td>102</td><td>Bridge Section</td><td>100</td><td>1</td><td>3:00.000</td><td>3:30.000</td><td>0:30.000</td><td>scene_01.mp4</td></tr>
+        <tr><td>103</td><td>Outro</td><td>50</td><td>2</td><td>4:10.000</td><td>5:00.000</td><td>0:50.000</td><td>scene_02.mp4</td></tr>
+        <tr><td>104</td><td>Solo Part</td><td>100</td><td>1</td><td>2:00.000</td><td>2:45.000</td><td>0:45.000</td><td>scene_02.mp4</td></tr>
+        <tr><td>105</td><td>Verse 2</td><td>100</td><td>1</td><td>5:10.000</td><td>6:00.000</td><td>0:50.000</td><td>scene_02.mp4</td></tr>
+        <tr><td>106</td><td>Final Chorus</td><td>125</td><td>2</td><td>6:30.000</td><td>7:15.000</td><td>0:45.000</td><td>scene_03.mp4</td></tr>
+        <tr><td>107</td><td>Breakdown</td><td>80</td><td>1</td><td>7:20.000</td><td>8:00.000</td><td>0:40.000</td><td>scene_03.mp4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn">◀</button>
+    <button class="btn">▶</button>
+    <button class="btn btn-accent">+ Add</button>
+    <button class="btn">✎ Modify</button>
+    <button class="btn btn-danger">✕ Del</button>
+    <button class="btn">💾 Save</button>
+  </div>
+</div>
+
+<!-- ==================== MISSING FILES ==================== -->
+<h2>Missing Files — Broken links (red rows)</h2>
+
+<div class="window">
+  <div class="controls-row">
+    <button class="btn-mode mode-off">OFF</button>
+    <div class="divider"></div>
+    <div class="point-group">
+      <span class="label">IN</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="point-group">
+      <span class="label">OUT</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <div class="speed-control">
+      <button class="speed-btn">-</button>
+      <span class="speed-val">100%</span>
+      <button class="speed-btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn">⚙</button>
+    <button class="btn">📂</button>
+    <button class="btn">📌</button>
+  </div>
+  <div class="filter-bar">
+    <span class="filter-icon">🔍</span>
+    <input class="search-input" placeholder="Filter events..." style="flex:1;">
+  </div>
+  <div class="playlist tall">
+    <table class="dark-table">
+      <thead><tr><th>#</th><th>Event Name</th><th>Spd</th><th>×</th><th>IN</th><th>OUT</th><th>Duration</th><th>File</th></tr></thead>
+      <tbody>
+        <tr><td>100</td><td>Intro Loop</td><td>100</td><td>1</td><td>0:00.000</td><td>0:45.200</td><td>0:45.200</td><td>scene_01.mp4</td></tr>
+        <tr class="missing"><td>101</td><td>Chorus A</td><td>75</td><td>3</td><td>1:23.456</td><td>2:34.567</td><td>1:11.111</td><td class="file-cell">Z:\old_drive\deleted_video.mp4 ✕</td></tr>
+        <tr class="missing"><td>102</td><td>Bridge Section</td><td>100</td><td>1</td><td>3:00.000</td><td>3:30.000</td><td>0:30.000</td><td class="file-cell">Z:\old_drive\deleted_video.mp4 ✕</td></tr>
+        <tr><td>103</td><td>Outro</td><td>50</td><td>2</td><td>4:10.000</td><td>5:00.000</td><td>0:50.000</td><td>scene_02.mp4</td></tr>
+        <tr class="missing"><td>104</td><td>Solo Part</td><td>100</td><td>1</td><td>2:00.000</td><td>2:45.000</td><td>0:45.000</td><td class="file-cell">\\NAS\share\moved.mp4 ✕</td></tr>
+        <tr><td>105</td><td>Verse 2</td><td>100</td><td>1</td><td>5:10.000</td><td>6:00.000</td><td>0:50.000</td><td>scene_02.mp4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn">◀</button>
+    <button class="btn">▶</button>
+    <button class="btn btn-accent">+ Add</button>
+    <button class="btn">✎ Modify</button>
+    <button class="btn btn-danger">✕ Del</button>
+    <button class="btn">💾 Save</button>
+  </div>
+</div>
+
+<!-- ==================== FILTERED ==================== -->
+<h2>Filtered — Searching "chorus"</h2>
+
+<div class="window">
+  <div class="controls-row">
+    <button class="btn-mode mode-loop">LOOP</button>
+    <div class="divider"></div>
+    <div class="point-group">
+      <span class="label">IN</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="1:23.456">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="point-group">
+      <span class="label">OUT</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="2:34.567">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <div class="speed-control">
+      <button class="speed-btn">-</button>
+      <span class="speed-val">75%</span>
+      <button class="speed-btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn">⚙</button>
+    <button class="btn">📂</button>
+    <button class="btn">📌</button>
+  </div>
+  <div class="filter-bar" style="background:#151525;">
+    <span class="filter-icon">🔍</span>
+    <input class="search-input" value="chorus" style="flex:1; border-color:#4a8; color:#8fc;">
+    <span class="result-count" style="color:#888;">2 of 8</span>
+    <span class="clear-filter">✕</span>
+  </div>
+  <div class="playlist">
+    <table class="dark-table">
+      <thead><tr><th>#</th><th>Event Name</th><th>Spd</th><th>×</th><th>IN</th><th>OUT</th><th>Duration</th><th>File</th></tr></thead>
+      <tbody>
+        <tr class="playing"><td>101</td><td><span style="background:#2a4a3a; padding:1px 3px; border-radius:2px;">Chorus</span> A</td><td>75</td><td>3</td><td>1:23.456</td><td>2:34.567</td><td>1:11.111</td><td>scene_01.mp4</td></tr>
+        <tr><td>106</td><td>Final <span style="background:#2a4a3a; padding:1px 3px; border-radius:2px;">Chorus</span></td><td>125</td><td>2</td><td>6:30.000</td><td>7:15.000</td><td>0:45.000</td><td>scene_03.mp4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn">◀</button>
+    <button class="btn">▶</button>
+    <button class="btn btn-accent">+ Add</button>
+    <button class="btn">✎ Modify</button>
+    <button class="btn btn-danger">✕ Del</button>
+    <button class="btn">💾 Save</button>
+  </div>
+</div>
+
+<!-- ==================== EMPTY ==================== -->
+<h2>Empty — No events</h2>
+
+<div class="window">
+  <div class="controls-row">
+    <button class="btn-mode mode-off">OFF</button>
+    <div class="divider"></div>
+    <div class="point-group">
+      <span class="label">IN</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" placeholder="—">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="point-group">
+      <span class="label">OUT</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" placeholder="—">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <div class="speed-control">
+      <button class="speed-btn">-</button>
+      <span class="speed-val">100%</span>
+      <button class="speed-btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn">⚙</button>
+    <button class="btn">📂</button>
+    <button class="btn">📌</button>
+  </div>
+  <div class="filter-bar">
+    <span class="filter-icon" style="opacity:0.3;">🔍</span>
+    <input class="search-input" placeholder="Filter events..." style="flex:1; opacity:0.3;" disabled>
+  </div>
+  <div class="playlist" style="min-height:100px; display:flex; align-items:center; justify-content:center;">
+    <div style="text-align:center; color:#3a3a4a; font-size:12px;">
+      <div style="font-size:20px; margin-bottom:6px; opacity:0.5;">📂</div>
+      Open a .looper file or set IN/OUT to start
+    </div>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn" style="opacity:0.3;">◀</button>
+    <button class="btn" style="opacity:0.3;">▶</button>
+    <button class="btn btn-accent">+ Add</button>
+    <button class="btn" style="opacity:0.3;">✎ Modify</button>
+    <button class="btn" style="opacity:0.3;">✕ Del</button>
+    <button class="btn" style="opacity:0.3;">💾 Save</button>
+  </div>
+</div>
+
+<!-- ==================== MANY EVENTS / SCROLLING ==================== -->
+<h2>Playlist Mode — Many events, scrolling</h2>
+
+<div class="window">
+  <div class="controls-row">
+    <button class="btn-mode mode-playlist">PLAYLIST</button>
+    <div class="divider"></div>
+    <div class="point-group">
+      <span class="label">IN</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="12:05.100">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="point-group">
+      <span class="label">OUT</span>
+      <button class="btn">-</button>
+      <input class="input-dark" style="width:68px" value="12:55.000">
+      <button class="btn btn-accent">SET</button>
+      <button class="btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <div class="speed-control">
+      <button class="speed-btn">-</button>
+      <span class="speed-val">100%</span>
+      <button class="speed-btn">+</button>
+    </div>
+    <div class="divider"></div>
+    <button class="btn">⚙</button>
+    <button class="btn">📂</button>
+    <button class="btn">📌</button>
+  </div>
+  <div class="filter-bar">
+    <span class="filter-icon">🔍</span>
+    <input class="search-input" placeholder="Filter events..." style="flex:1;">
+    <span class="result-count">18 events</span>
+  </div>
+  <div class="playlist" style="max-height:200px;">
+    <table class="dark-table">
+      <thead><tr><th>#</th><th>Event Name</th><th>Spd</th><th>×</th><th>IN</th><th>OUT</th><th>Duration</th><th>File</th></tr></thead>
+      <tbody>
+        <tr><td>108</td><td>Scene 9</td><td>100</td><td>1</td><td>9:30.000</td><td>10:15.000</td><td>0:45.000</td><td>compilation.mp4</td></tr>
+        <tr><td>109</td><td>Scene 10</td><td>100</td><td>1</td><td>10:20.000</td><td>10:55.000</td><td>0:35.000</td><td>compilation.mp4</td></tr>
+        <tr><td>110</td><td>Scene 11</td><td>80</td><td>2</td><td>11:00.000</td><td>11:40.000</td><td>0:40.000</td><td>compilation.mp4</td></tr>
+        <tr><td>111</td><td>Scene 12</td><td>100</td><td>1</td><td>11:45.000</td><td>12:00.000</td><td>0:15.000</td><td>compilation.mp4</td></tr>
+        <tr class="playing"><td>112</td><td>Scene 13 - best part</td><td>100</td><td>3</td><td>12:05.100</td><td>12:55.000</td><td>0:49.900</td><td>compilation.mp4</td></tr>
+        <tr><td>113</td><td>Scene 14</td><td>100</td><td>1</td><td>13:00.000</td><td>13:30.000</td><td>0:30.000</td><td>compilation.mp4</td></tr>
+        <tr><td>114</td><td>Scene 15</td><td>75</td><td>1</td><td>13:35.000</td><td>14:20.000</td><td>0:45.000</td><td>compilation.mp4</td></tr>
+        <tr><td>115</td><td>Scene 16</td><td>100</td><td>2</td><td>14:25.000</td><td>15:00.000</td><td>0:35.000</td><td>compilation.mp4</td></tr>
+        <tr><td>116</td><td>Scene 17</td><td>100</td><td>1</td><td>15:10.000</td><td>15:50.000</td><td>0:40.000</td><td>compilation.mp4</td></tr>
+        <tr><td>117</td><td>Scene 18 - finale</td><td>50</td><td>4</td><td>16:00.000</td><td>17:00.000</td><td>1:00.000</td><td>compilation.mp4</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="bottom-bar">
+    <button class="btn">◀</button>
+    <button class="btn">▶</button>
+    <button class="btn btn-accent">+ Add</button>
+    <button class="btn">✎ Modify</button>
+    <button class="btn btn-danger">✕ Del</button>
+    <button class="btn">💾 Save</button>
+  </div>
+</div>
+
+<!-- ==================== SETTINGS - FULL ==================== -->
+<h2>Settings — Full preferences</h2>
+<p class="desc">This is the complete settings window with all current options.</p>
+
+<div class="settings-window">
+  <div class="settings-header">⚙ Preferences</div>
+  <div class="settings-body">
+    <div class="settings-col">
+
+      <span class="section-title">Timing</span>
+      <div class="settings-input-row">
+        <div class="row">
+          <div style="flex:1;">
+            <label>Preview Time (sec)</label>
+            <input class="small-input" value="0.25" style="width:100%; text-align:center; margin-top:2px;">
+          </div>
+          <div style="flex:1;">
+            <label>Slip Amount (sec)</label>
+            <input class="small-input" value="1" style="width:100%; text-align:center; margin-top:2px;">
+          </div>
+          <div style="flex:1;">
+            <label>Default Speed</label>
+            <input class="small-input" value="100" style="width:100%; text-align:center; margin-top:2px;">
+          </div>
+        </div>
+      </div>
+
+      <span class="section-title">New Event Name Template</span>
+      <div class="settings-input-row">
+        <input value="[#] [F]" style="width:100%;">
+      </div>
+
+      <span class="section-title">Defaults to Save</span>
+      <label class="checkbox-row"><input type="checkbox"> Save preview time</label>
+      <label class="checkbox-row"><input type="checkbox"> Save slip amount</label>
+      <label class="checkbox-row"><input type="checkbox"> Save Always-on-Top state</label>
+      <label class="checkbox-row"><input type="checkbox"> Save Loop Mode state</label>
+      <label class="checkbox-row"><input type="checkbox"> Save Looper window position</label>
+      <label class="checkbox-row"><input type="checkbox"> Save Playlist window position/size</label>
+      <label class="checkbox-row"><input type="checkbox"> Save default speed</label>
+      <label class="checkbox-row"><input type="checkbox"> Save event name template</label>
+
+      <span class="section-title">Default .looper Save Path</span>
+      <div class="settings-input-row">
+        <div class="row">
+          <input value="%USERPROFILE%\OneDrive\Desktop\Loops">
+          <button>Browse</button>
+        </div>
+        <label class="checkbox-row" style="margin-top:2px;"><input type="checkbox" checked> Save this path as default</label>
+      </div>
+
+    </div>
+    <div class="settings-col">
+
+      <span class="section-title">Behavior</span>
+      <label class="checkbox-row"><input type="checkbox"> Allow multiple instances</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Disable tooltips</label>
+      <label class="checkbox-row"><input type="checkbox"> Force pause on load event</label>
+      <label class="checkbox-row"><input type="checkbox"> Disable auto-play after dialogs</label>
+      <label class="checkbox-row"><input type="checkbox"> Auto-load last .looper on launch</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Keep mode when opening new files</label>
+      <label class="checkbox-row"><input type="checkbox"> Disable auto-play first event on open</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Skip save confirmations</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Auto-name events (skip editor)</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Auto-save .looper on changes</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Auto-create event on Set OUT</label>
+
+      <span class="section-title">OSD Notifications</span>
+      <label class="checkbox-row"><input type="checkbox" checked> In Point</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Out Point</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Event Added</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Loop Mode Change</label>
+      <label class="checkbox-row"><input type="checkbox" checked> Looper Saved</label>
+
+      <span class="section-title">Hotkeys</span>
+      <div style="margin-top:2px;">
+        <button class="btn" style="width:100%; justify-content:center;">Configure Hotkeys...</button>
+      </div>
+
+    </div>
+  </div>
+  <div class="settings-footer">
+    <button class="btn">Cancel</button>
+    <button class="btn btn-save">Save Preferences</button>
+  </div>
+</div>
+
+<!-- ==================== MODE BUTTON REFERENCE ==================== -->
+<h2>Mode Button States</h2>
+<div style="display: flex; gap: 12px; margin-top: 10px;">
+  <button class="btn-mode mode-off">OFF</button>
+  <button class="btn-mode mode-loop">LOOP</button>
+  <button class="btn-mode mode-playlist">PLAYLIST</button>
+  <button class="btn-mode mode-shuffle">SHUFFLE</button>
+</div>
+
+<br><br>
+</body>
+</html>

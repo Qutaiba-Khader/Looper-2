@@ -40,7 +40,12 @@ Public Class optionsWindow
             Dim options_skipSaveConfirmations As String = betweenTheLines(fileReader, "skipSaveConfirmations=", vbCrLf, "-1") ' whether to skip save confirmation dialogs
             Dim options_skipEventNameEditor As String = betweenTheLines(fileReader, "skipEventNameEditor=", vbCrLf, "-1") ' whether to skip event name editor on add
             Dim options_autoSaveLooper As String = betweenTheLines(fileReader, "autoSaveLooper=", vbCrLf, "-1") ' whether to auto-save looper file on changes
-            Dim options_clearPointsAfterAdd As String = betweenTheLines(fileReader, "clearPointsAfterAdd=", vbCrLf, "-1") ' whether to clear IN/OUT after adding event
+            Dim options_autoCreateEventOnOut As String = betweenTheLines(fileReader, "autoCreateEventOnOut=", vbCrLf, "-1") ' whether to auto-create event on OUT point
+            Dim options_osdOnInPoint As String = betweenTheLines(fileReader, "osdOnInPoint=", vbCrLf, "-1")
+            Dim options_osdOnOutPoint As String = betweenTheLines(fileReader, "osdOnOutPoint=", vbCrLf, "-1")
+            Dim options_osdOnAddEvent As String = betweenTheLines(fileReader, "osdOnAddEvent=", vbCrLf, "-1")
+            Dim options_osdOnLoopModeChange As String = betweenTheLines(fileReader, "osdOnLoopModeChange=", vbCrLf, "-1")
+            Dim options_osdOnSave As String = betweenTheLines(fileReader, "osdOnSave=", vbCrLf, "-1")
             Dim options_defaultLooperSavePath As String = betweenTheLines(fileReader, "defaultLooperSavePath=", vbCrLf, "-1") ' default save path for .looper files
 
             '================== Load the [System] section ==================
@@ -93,7 +98,12 @@ Public Class optionsWindow
             If options_skipSaveConfirmations <> "-1" Then skipSaveConfirmCB.Checked = True
             If options_skipEventNameEditor <> "-1" Then skipEventNameCB.Checked = True
             If options_autoSaveLooper <> "-1" Then autoSaveCB.Checked = True
-            If options_clearPointsAfterAdd <> "-1" Then clearPointsCB.Checked = True
+            If options_autoCreateEventOnOut <> "-1" Then autoCreateEventCB.Checked = True
+            If options_osdOnInPoint <> "-1" Then osdInPointCB.Checked = True
+            If options_osdOnOutPoint <> "-1" Then osdOutPointCB.Checked = True
+            If options_osdOnAddEvent <> "-1" Then osdAddEventCB.Checked = True
+            If options_osdOnLoopModeChange <> "-1" Then osdLoopModeCB.Checked = True
+            If options_osdOnSave <> "-1" Then osdSaveCB.Checked = True
             If options_defaultLooperSavePath <> "-1" Then
                 defaultSavePathTF.Text = options_defaultLooperSavePath
                 saveDefaultPathCB.Checked = True
@@ -120,7 +130,8 @@ Public Class optionsWindow
         If savePreviewTimeCB.Checked Or saveSlipTimeCB.Checked Or saveCurrentLoopButtonCB.Checked Or saveAOTCB.Checked Or
         forcePauseCB.Checked Or keepModeCB.Checked Or disableTTCB.Checked Or autoloadCB.Checked Or allowMICB.Checked Or
         disableAutoPlayCB.Checked Or disableAutoPlayOnLoadCB.Checked Or hidePlaylistWndCB.Checked Or saveSpeedCB.Checked Or
-        saveNewNameCB.Checked Or skipSaveConfirmCB.Checked Or skipEventNameCB.Checked Or autoSaveCB.Checked Or clearPointsCB.Checked Or saveDefaultPathCB.Checked Or
+        saveNewNameCB.Checked Or skipSaveConfirmCB.Checked Or skipEventNameCB.Checked Or autoSaveCB.Checked Or autoCreateEventCB.Checked Or
+        osdInPointCB.Checked Or osdOutPointCB.Checked Or osdAddEventCB.Checked Or osdLoopModeCB.Checked Or osdSaveCB.Checked Or saveDefaultPathCB.Checked Or
         options_MPCConfirm <> "-1" Or options_dockMode <> "-1" Then
             writingString = "[Prefs]" & vbCrLf ' write the [Prefs] header of the INI file
         End If
@@ -230,16 +241,51 @@ Public Class optionsWindow
             autoSaveLooper = False
         End If
 
-        If clearPointsCB.Checked Then
-            writingString = writingString & "clearPointsAfterAdd=1" & vbCrLf
-            clearPointsAfterAdd = True
+        If autoCreateEventCB.Checked Then
+            writingString = writingString & "autoCreateEventOnOut=1" & vbCrLf
+            autoCreateEventOnOut = True
         Else
-            clearPointsAfterAdd = False
+            autoCreateEventOnOut = False
+        End If
+
+        If osdInPointCB.Checked Then
+            writingString = writingString & "osdOnInPoint=1" & vbCrLf
+            osdOnInPoint = True
+        Else
+            osdOnInPoint = False
+        End If
+
+        If osdOutPointCB.Checked Then
+            writingString = writingString & "osdOnOutPoint=1" & vbCrLf
+            osdOnOutPoint = True
+        Else
+            osdOnOutPoint = False
+        End If
+
+        If osdAddEventCB.Checked Then
+            writingString = writingString & "osdOnAddEvent=1" & vbCrLf
+            osdOnAddEvent = True
+        Else
+            osdOnAddEvent = False
+        End If
+
+        If osdLoopModeCB.Checked Then
+            writingString = writingString & "osdOnLoopModeChange=1" & vbCrLf
+            osdOnLoopModeChange = True
+        Else
+            osdOnLoopModeChange = False
+        End If
+
+        If osdSaveCB.Checked Then
+            writingString = writingString & "osdOnSave=1" & vbCrLf
+            osdOnSave = True
+        Else
+            osdOnSave = False
         End If
 
         If saveDefaultPathCB.Checked And defaultSavePathTF.Text <> "" Then
             writingString = writingString & "defaultLooperSavePath=" & defaultSavePathTF.Text & vbCrLf
-            defaultLooperSavePath = defaultSavePathTF.Text
+            defaultLooperSavePath = Environment.ExpandEnvironmentVariables(defaultSavePathTF.Text)
         Else
             defaultLooperSavePath = Nothing
         End If
@@ -297,11 +343,10 @@ Public Class optionsWindow
 
         System.IO.File.WriteAllText(INIFile, writingString)
 
-        MessageBox.Show(Me, "Your preferences have been saved to MPCLooper.ini:" & vbCrLf & vbCrLf & writingString,
-                        "Preferences Saved!",
+        MessageBox.Show(Me, "Preferences saved.",
+                        "Saved",
                         MessageBoxButtons.OK,
-                        MessageBoxIcon.Information,
-                        MessageBoxDefaultButton.Button1)
+                        MessageBoxIcon.Information)
 
         Me.Close()
     End Sub

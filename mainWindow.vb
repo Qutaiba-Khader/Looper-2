@@ -45,12 +45,6 @@ Public Class mainWindow
     Public autoplayFirstEvent As Boolean = True ' set this to True to allow auto-playing the first event when opening a .looper file
     Public dontForceLooperModeonOpen As Boolean = False ' whether to set Loop in Looper Mode after opening .looper file
 
-    ' Pan and Scan Settings
-    Public xPos As Double = 0.5
-    Public yPos As Double = 0.5
-    Public xZoom As Double = 1.0
-    Public yZoom As Double = 1.0
-
     ' Threads for background work
     Public posThread, frontThread As Thread ' threads to check on MPC-HC position and hotkeys
 
@@ -69,10 +63,6 @@ Public Class mainWindow
 
     Public loadingEvent As Boolean = False ' if we're in the process of loading an event (for the NOWPLAYING function)
     Public loadingEvent_Speed As Integer = 100
-    Public loadingEvent_xPos As Double = 0.5
-    Public loadingEvent_yPos As Double = 0.5
-    Public loadingEvent_xZoom As Double = 1.0
-    Public loadingEvent_yZoom As Double = 1.0
 
     Private slipAction As Integer = 0 ' the current slip action to undertake - 1/2 - slip IN left/right 3/4 - slip OUT left/right
 
@@ -81,7 +71,7 @@ Public Class mainWindow
                                       {"|79", Nothing, "Set Out Point"},
                                       {"C|73", Nothing, "Clear In Point"},
                                       {"C|79", Nothing, "Clear Out Point"},
-                                      {"C|88", Nothing, "Clear IN and OUT Points"},
+                                      {"C|103", Nothing, "Clear IN and OUT Points"},
                                       {"|219", Nothing, "Trim IN Point Left"},
                                       {"S|219", Nothing, "Trim IN Point Left by default value"},
                                       {"|221", Nothing, "Trim IN Point Right"},
@@ -112,16 +102,7 @@ Public Class mainWindow
                                       {"C|82", Nothing, "Reset to default speed"},
                                       {"C|70", Nothing, "Go to the Search Field of the Playlist window"},
                                       {"C|65", Nothing, "Select all events in Events List"},
-                                      {"CS|68", Nothing, "De-Select all events in Events List"},
-                                      {"|103", Nothing, "Zoom OUT on the X Axis"},
-                                      {"|105", Nothing, "Zoom IN on the X Axis"},
-                                      {"|97", Nothing, "Zoom OUT on the Y Axis"},
-                                      {"|99", Nothing, "Zoom IN on the Y Axis"},
-                                      {"|101", Nothing, "Reset Pan/Scan to Defaults"},
-                                      {"|100", Nothing, "Move Video to the Left"},
-                                      {"|102", Nothing, "Move Video to the Right"},
-                                      {"|104", Nothing, "Move Video Up"},
-                                      {"|98", Nothing, "Move Video Down"}}
+                                      {"CS|68", Nothing, "De-Select all events in Events List"}}
 
     ' ======================================================================================
     ' ================= DLL CALLS AND STRUCTURES ===========================================
@@ -131,6 +112,14 @@ Public Class mainWindow
         Public dwData As IntPtr
         Public cbData As Integer
         Public lpData As IntPtr
+    End Structure
+
+    <StructLayout(LayoutKind.Sequential, CharSet:=CharSet.Unicode)>
+    Public Structure MPC_OSDDATA
+        Public nMsgPos As Integer
+        Public nDurationMS As Integer
+        <MarshalAs(UnmanagedType.ByValTStr, SizeConst:=128)>
+        Public strMsg As String
     End Structure
 
     ' Returns the current foreground window (to check to see whether hotkeys should be enabled or not)
@@ -175,6 +164,26 @@ Public Class mainWindow
         Return returnValue
     End Function
 
+    Public Sub SendOSD(msg As String, Optional position As Integer = 1, Optional durationMs As Integer = 1500)
+        Dim osdData As New MPC_OSDDATA With {
+            .nMsgPos = position,
+            .nDurationMS = durationMs,
+            .strMsg = msg
+        }
+
+        Dim pOsdData As IntPtr = Marshal.AllocHGlobal(Marshal.SizeOf(osdData))
+        Marshal.StructureToPtr(osdData, pOsdData, False)
+
+        Dim cds As New CopyData With {
+            .dwData = CType(CMD_SEND.CMD_OSDSHOWMESSAGE, IntPtr),
+            .cbData = Marshal.SizeOf(osdData),
+            .lpData = pOsdData
+        }
+
+        SendMessageA(MPCHandle, WM_COPYDATA, myHandle, cds)
+        Marshal.FreeHGlobal(pOsdData)
+    End Sub
+
     Protected Overrides Sub WndProc(ByRef m As System.Windows.Forms.Message)
         Select Case m.Msg
             Case WM_HOTKEY ' if the message received is a hotkey event
@@ -191,11 +200,10 @@ Public Class mainWindow
                         loadLooperFile(theMessage)
                     Case CType(CMD_RECEIVED.CMD_CONNECT, IntPtr) ' received when MPC-HC connects to Looper for the first time
                         MPCHandle = m.WParam ' the current hWnd of the current MPC-HC instance
+                        Log("MPC-HC connected, hWnd=" & MPCHandle.ToString())
 
                         clearInPoint()
                         clearOutPoint()
-                        setPanScan(5, 0) ' reset the zoom and pan/scan settings to their defaults
-
                         playlistWindow.SetForegroundWindow(MPCHandle) ' make MPC-HC the foreground window
 
                         If My.Application.CommandLineArgs.Count > 0 Then ' if we gave Looper a .looper file to open, then open it
@@ -277,13 +285,13 @@ Public Class mainWindow
                         If currentPlayingFile <> nowInfoArray(UBound(nowInfoArray) - 1) Then ' if the filenames don't match, then change the current information
                             currentPlayingFile = nowInfoArray(UBound(nowInfoArray) - 1)
                             Double.TryParse(nowInfoArray(UBound(nowInfoArray)), currentDuration)
+                            Log("Now playing: " & currentPlayingFile)
                         End If
 
                         ' if we're loading an event from a file, and it first recieved the NOWPLAYING message, then set the event up NOW
                         If loadingEvent = True Then
                             SendMessage(CMD_SEND.CMD_SETPOSITION, CStr(TimeStringToNumber(inTF.Text) - 0.5))
                             setSpeed(loadingEvent_Speed)
-                            setPanScan(5, 0, loadingEvent_xPos, loadingEvent_yPos, loadingEvent_xZoom, loadingEvent_yZoom)
 
                             If pausePlaybackOnLoadEvent Then
                                 SendMessage(CMD_SEND.CMD_PAUSE) ' pause the playback if you have the preference set to do that
@@ -331,6 +339,7 @@ Public Class mainWindow
                             End If
                         End If
                     Case CType(CMD_RECEIVED.CMD_DISCONNECT, IntPtr) ' received when MPC-HC quits on its own - we can't come back from this, so see if we want to save
+                        Log("MPC-HC disconnected")
                         playlistWindow.unInitialize(True)
                         Me.Close()
                 End Select
@@ -347,6 +356,7 @@ Public Class mainWindow
     ' ======================================================================================
 
     Private Sub mainWindow_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+        Log("=== Looper 2 starting ===")
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture
 
@@ -569,8 +579,14 @@ Public Class mainWindow
         Boolean.TryParse(betweenTheLines(fileReader, "skipSaveConfirmations=", vbCrLf, "B_False"), skipSaveConfirmations)
         Boolean.TryParse(betweenTheLines(fileReader, "skipEventNameEditor=", vbCrLf, "B_False"), skipEventNameEditor)
         Boolean.TryParse(betweenTheLines(fileReader, "autoSaveLooper=", vbCrLf, "B_False"), autoSaveLooper)
+        Boolean.TryParse(betweenTheLines(fileReader, "autoCreateEventOnOut=", vbCrLf, "B_False"), autoCreateEventOnOut)
+        Boolean.TryParse(betweenTheLines(fileReader, "osdOnInPoint=", vbCrLf, "B_False"), osdOnInPoint)
+        Boolean.TryParse(betweenTheLines(fileReader, "osdOnOutPoint=", vbCrLf, "B_False"), osdOnOutPoint)
+        Boolean.TryParse(betweenTheLines(fileReader, "osdOnAddEvent=", vbCrLf, "B_False"), osdOnAddEvent)
+        Boolean.TryParse(betweenTheLines(fileReader, "osdOnLoopModeChange=", vbCrLf, "B_False"), osdOnLoopModeChange)
+        Boolean.TryParse(betweenTheLines(fileReader, "osdOnSave=", vbCrLf, "B_False"), osdOnSave)
         defaultLooperSavePath = betweenTheLines(fileReader, "defaultLooperSavePath=", vbCrLf, Nothing)
-        Boolean.TryParse(betweenTheLines(fileReader, "clearPointsAfterAdd=", vbCrLf, "B_False"), clearPointsAfterAdd)
+        If defaultLooperSavePath IsNot Nothing Then defaultLooperSavePath = Environment.ExpandEnvironmentVariables(defaultLooperSavePath)
 
         newEventString = betweenTheLines(fileReader, "newEventName=", vbCrLf, "New Loop Event") ' the name for new un-named events on the events list
 
@@ -607,7 +623,7 @@ Public Class mainWindow
         ' Check to see if there are any custom hotkeys
         Dim currentHK As String = Nothing
 
-        For checkHotKey = 100 To 144 Step 1
+        For checkHotKey = 100 To 135 Step 1
             currentHK = betweenTheLines(fileReader, checkHotKey & "=", vbCrLf, "-1") ' check to see if there's an entry for the specific hotkey
             If currentHK <> "-1" Then hotKeyList(checkHotKey - 100, 1) = currentHK ' if there is, then set it
 
@@ -654,11 +670,8 @@ Public Class mainWindow
     End Sub
 
     Private Sub showFileInExplorer()
-        SendMessage(CMD_SEND.CMD_GETNOWPLAYING) ' get the currently playing file (just in case it may have changed)
-
-        If currentPlayingFile <> Nothing Then
-            Process.Start("explorer.exe", "/select,""" & currentPlayingFile & """") ' if MPC-HC is currently playing, then open the file and highlight it in Explorer
-        End If
+        Log("Open .looper file clicked")
+        playlistWindow.loadLooperFile()
     End Sub
 
     ' ======================================================================================
@@ -733,17 +746,6 @@ Public Class mainWindow
             If hotKeyID = -1 Or hotKeyID = 134 Then assignHotKey(Me.Handle, 134) ' Select ALL the events in the events list
             If hotKeyID = -1 Or hotKeyID = 135 Then assignHotKey(Me.Handle, 135) ' Select NONE of the events in the events list
 
-            ' Pan and Scan controls
-            If hotKeyID = -1 Or hotKeyID = 136 Then assignHotKey(Me.Handle, 136) ' Zoom Out on the X Axis
-            If hotKeyID = -1 Or hotKeyID = 137 Then assignHotKey(Me.Handle, 137) ' Zoom In on the X Axis
-            If hotKeyID = -1 Or hotKeyID = 138 Then assignHotKey(Me.Handle, 138) ' Zoom Out on the Y Axis
-            If hotKeyID = -1 Or hotKeyID = 139 Then assignHotKey(Me.Handle, 139) ' Zoom In on the Y Axis
-            If hotKeyID = -1 Or hotKeyID = 140 Then assignHotKey(Me.Handle, 140) ' Reset Pan and Scan to defaults
-            If hotKeyID = -1 Or hotKeyID = 141 Then assignHotKey(Me.Handle, 141) ' Move Video to the Left
-            If hotKeyID = -1 Or hotKeyID = 142 Then assignHotKey(Me.Handle, 142) ' Move Video to the Right
-            If hotKeyID = -1 Or hotKeyID = 143 Then assignHotKey(Me.Handle, 143) ' Move Video Up
-            If hotKeyID = -1 Or hotKeyID = 144 Then assignHotKey(Me.Handle, 144) ' Move Video Down
-
             If hotKeyID = -1 Then
                 hotkeysTF.Text = "HOTKEYS ON"
                 hotkeysTF.ForeColor = Color.Green
@@ -795,16 +797,6 @@ Public Class mainWindow
 
             If hotKeyID = -1 Or hotKeyID = 141 Then UnregisterHotKey(Me.Handle, 134) ' Select ALL the events in the events list
             If hotKeyID = -1 Or hotKeyID = 142 Then UnregisterHotKey(Me.Handle, 135) ' Select NONE of the events in the events list
-
-            If hotKeyID = -1 Or hotKeyID = 150 Then UnregisterHotKey(Me.Handle, 136) ' Zoom Out on the X Axis
-            If hotKeyID = -1 Or hotKeyID = 151 Then UnregisterHotKey(Me.Handle, 137) ' Zoom In on the X Axis
-            If hotKeyID = -1 Or hotKeyID = 152 Then UnregisterHotKey(Me.Handle, 138) ' Zoom Out on the Y Axis
-            If hotKeyID = -1 Or hotKeyID = 153 Then UnregisterHotKey(Me.Handle, 139) ' Zoom In on the Y Axis
-            If hotKeyID = -1 Or hotKeyID = 154 Then UnregisterHotKey(Me.Handle, 140) ' Reset Pan and Scan to defaults
-            If hotKeyID = -1 Or hotKeyID = 155 Then UnregisterHotKey(Me.Handle, 141) ' Move Video to the Left
-            If hotKeyID = -1 Or hotKeyID = 156 Then UnregisterHotKey(Me.Handle, 142) ' Move Video to the Right
-            If hotKeyID = -1 Or hotKeyID = 157 Then UnregisterHotKey(Me.Handle, 143) ' Move Video Up
-            If hotKeyID = -1 Or hotKeyID = 158 Then UnregisterHotKey(Me.Handle, 144) ' Move Video Down
 
             hotkeysTF.Text = "HOTKEYS OFF"
             hotkeysTF.ForeColor = Color.Red
@@ -917,24 +909,6 @@ Public Class mainWindow
                     playlistWindow.eventsList.EndUpdate()
                 End If
 
-            Case 136 ' zoom OUT on the X axis
-                setPanScan(1, -0.05)
-            Case 137 ' zoom IN on the X axis
-                setPanScan(1, 0.05)
-            Case 138 ' zoom OUT on the Y axis
-                setPanScan(2, -0.05)
-            Case 139 ' zoom IN on the Y axis
-                setPanScan(2, 0.05)
-            Case 140 ' set pan and scan back to default settings
-                setPanScan(5, 0)
-            Case 141 ' move the video to the left
-                setPanScan(3, 0.005)
-            Case 142 ' move the video to the right
-                setPanScan(3, -0.005)
-            Case 143 ' move the video up
-                setPanScan(4, 0.005)
-            Case 144 ' move the video down
-                setPanScan(4, -0.005)
         End Select
     End Sub
 
@@ -1084,12 +1058,6 @@ Public Class mainWindow
         inTF.Enabled = onOrOff
         outTF.Enabled = onOrOff
 
-        zoomAxesLinkButton.Enabled = onOrOff
-        xPosTF.Enabled = onOrOff
-        yPosTF.Enabled = onOrOff
-        xZoomTF.Enabled = onOrOff
-        yZoomTF.Enabled = onOrOff
-
         inPointSlipLeftButton.Enabled = onOrOff
         inPointClearButton.Enabled = onOrOff
         inPointButton.Enabled = onOrOff
@@ -1132,6 +1100,7 @@ Public Class mainWindow
         loopModeButton.BackColor = Color.FromArgb(255, 255, 225)
 
         switchEditingControls()
+        If osdOnLoopModeChange Then SendOSD("Loop Mode: Off")
     End Sub
 
     Public Sub switchToLoopMode()
@@ -1141,6 +1110,7 @@ Public Class mainWindow
         loopModeButton.BackColor = Color.FromArgb(176, 246, 176)
 
         switchEditingControls()
+        If osdOnLoopModeChange Then SendOSD("Loop Mode: Loop")
     End Sub
 
     Public Sub switchToPlaylistMode()
@@ -1151,6 +1121,7 @@ Public Class mainWindow
             loopModeButton.BackColor = Color.FromArgb(255, 168, 130)
 
             switchEditingControls(False)
+            If osdOnLoopModeChange Then SendOSD("Loop Mode: Playlist")
         End If
     End Sub
 
@@ -1170,6 +1141,8 @@ Public Class mainWindow
             ' Force the playlist to start at the beginning of the random order
             playlistWindow.currentPlayingEvent = -1
             playlistWindow.loadPrevNextEvent(1)
+
+            If osdOnLoopModeChange Then SendOSD("Loop Mode: Shuffle")
         End If
     End Sub
 
@@ -1275,7 +1248,10 @@ Public Class mainWindow
             outTF.Text = Nothing ' clear the OUT point without resetting to end-of-video
         End If
 
-        playlistWindow.checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
+        playlistWindow.checkAgainstCurrentPlayingEvent()
+
+        Log("Set IN Point: " & inTF.Text)
+        If osdOnInPoint Then SendOSD("In Point")
     End Sub
 
     Public Sub setOutPoint()
@@ -1283,7 +1259,12 @@ Public Class mainWindow
         Threading.Thread.Sleep(50) ' wait for position response to arrive
         outTF.Text = NumberToTimeString(currentPosition + outPointOffset)
 
-        playlistWindow.checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
+        playlistWindow.checkAgainstCurrentPlayingEvent()
+
+        Log("Set OUT Point: " & outTF.Text)
+        If osdOnOutPoint AndAlso Not autoCreateEventOnOut Then SendOSD("Out Point")
+
+        If autoCreateEventOnOut Then playlistWindow.addEvent()
     End Sub
 
     Public Sub clearInPoint()
@@ -1429,139 +1410,4 @@ Public Class mainWindow
         setSpeed(200)
     End Sub
 
-    ' ======================================================================================
-    ' ================= PAN AND SCAN HANDLERS ==============================================
-    ' ======================================================================================
-
-    Private Sub xPosTF_KeyDown(sender As Object, e As KeyEventArgs) Handles xPosTF.KeyDown
-        If e.KeyCode = Keys.Enter Then
-            Dim testValue As Double
-            Double.TryParse(xPosTF.Text, testValue)
-
-            setPanScan(5, 0, testValue, yPos, xZoom, yZoom)
-
-            ' cancel the ENTER event and clear focus
-            e.Handled = True
-            e.SuppressKeyPress = True
-            Me.ActiveControl = Nothing
-        End If
-    End Sub
-
-    Private Sub yPosTF_KeyDown(sender As Object, e As KeyEventArgs) Handles yPosTF.KeyDown
-        If e.KeyCode = Keys.Enter Then
-            Dim testValue As Double
-            Double.TryParse(yPosTF.Text, testValue)
-
-            setPanScan(5, 0, xPos, testValue, xZoom, yZoom)
-
-            ' cancel the ENTER event and clear focus
-            e.Handled = True
-            e.SuppressKeyPress = True
-            Me.ActiveControl = Nothing
-        End If
-    End Sub
-
-    Private Sub xZoomTF_KeyDown(sender As Object, e As KeyEventArgs) Handles xZoomTF.KeyDown
-        If e.KeyCode = Keys.Enter Then
-            Dim testValue As Double
-            Double.TryParse(xZoomTF.Text, testValue)
-
-            If zoomAxesLinkButton.Checked = True Then
-                setPanScan(5, 0, xPos, yPos, testValue, testValue)
-            Else
-                setPanScan(5, 0, xPos, yPos, testValue, yZoom)
-            End If
-
-            ' cancel the ENTER event and clear focus
-            e.Handled = True
-            e.SuppressKeyPress = True
-            Me.ActiveControl = Nothing
-        End If
-    End Sub
-
-    Private Sub yZoomTF_KeyDown(sender As Object, e As KeyEventArgs) Handles yZoomTF.KeyDown
-        If e.KeyCode = Keys.Enter Then
-            Dim testValue As Double
-            Double.TryParse(yZoomTF.Text, testValue)
-
-            If zoomAxesLinkButton.Checked = True Then
-                setPanScan(5, 0, xPos, yPos, testValue, testValue)
-            Else
-                setPanScan(5, 0, xPos, yPos, xZoom, testValue)
-            End If
-
-            ' cancel the ENTER event and clear focus
-            e.Handled = True
-            e.SuppressKeyPress = True
-            Me.ActiveControl = Nothing
-        End If
-    End Sub
-
-    Public Sub setPanScan(typeOfMove As Integer, theAmount As Double,
-                          Optional customPosX As Double = 0.5, Optional customPosY As Double = 0.5,
-                          Optional customZoomX As Double = 1, Optional customZoomY As Double = 1)
-
-        If typeOfMove = 1 Then ' we're adjusting the zoom for the X axis
-            If xZoom + theAmount > 0.2 And xZoom + theAmount < 5 Then xZoom += theAmount
-
-            If zoomAxesLinkButton.Checked = True Then
-                If yZoom + theAmount > 0.2 And yZoom + theAmount < 5 Then yZoom += theAmount
-            End If
-        ElseIf typeOfMove = 2 Then ' we're adjusting the zoom for the Y axis
-            If yZoom + theAmount > 0.2 And yZoom + theAmount < 5 Then yZoom += theAmount
-
-            If zoomAxesLinkButton.Checked = True Then
-                If xZoom + theAmount > 0.2 And xZoom + theAmount < 5 Then xZoom += theAmount
-            End If
-        ElseIf typeOfMove = 3 Then ' we're moving the X axis
-            If xZoom > 1 Then theAmount *= (xZoom * 1.5)
-            If xPos + theAmount > -0.5 And xPos + theAmount < 1.5 Then xPos += theAmount
-        ElseIf typeOfMove = 4 Then ' we're moving the Y axis
-            If yZoom > 1 Then theAmount *= (yZoom * 1.5)
-            If yPos + theAmount > -0.5 And yPos + theAmount < 1.5 Then yPos += theAmount
-        ElseIf typeOfMove = 5 Then ' we're setting up a custom pan/scan setting, or resetting to defaults
-            If customPosX > -0.5 And customPosX < 1.5 Then
-                xPos = customPosX
-            ElseIf customPosX < -0.5 Then
-                xPos = -0.5
-            ElseIf customPosX > 1.5 Then
-                xPos = 1.5
-            End If
-
-            If customPosY > -0.5 And customPosY < 1.5 Then
-                yPos = customPosY
-            ElseIf customPosY < -0.5 Then
-                yPos = -0.5
-            ElseIf customPosY > 1.5 Then
-                yPos = 1.5
-            End If
-
-            If customZoomX <> 0 Then
-                If customZoomX > 0.2 And customZoomX < 5 Then
-                    xZoom = customZoomX
-                ElseIf customZoomX < 0.2 Then
-                    xZoom = 0.2
-                ElseIf customZoomX > 5 Then
-                    xZoom = 5
-                End If
-            End If
-
-            If customZoomY <> 0 Then
-                If customZoomY > 0.2 And customZoomY < 5 Then
-                    yZoom = customZoomY
-                ElseIf customZoomY < 0.2 Then
-                    yZoom = 0.2
-                ElseIf customZoomY > 5 Then
-                    yZoom = 5
-                End If
-            End If
-        End If
-
-        xPosTF.Text = xPos.ToString("N3")
-        yPosTF.Text = yPos.ToString("N3")
-        xZoomTF.Text = xZoom.ToString("N3")
-        yZoomTF.Text = yZoom.ToString("N3")
-
-        SendMessage(CMD_SEND.CMD_SETPANSCAN, xPos.ToString("N3") & "," & yPos.ToString("N3") & "," & xZoom.ToString("N3") & "," & yZoom.ToString("N3"))
-    End Sub
 End Class

@@ -60,11 +60,16 @@ Partial Class optionsWindow
         Me.skipSaveConfirmCB = New System.Windows.Forms.CheckBox()
         Me.skipEventNameCB = New System.Windows.Forms.CheckBox()
         Me.autoSaveCB = New System.Windows.Forms.CheckBox()
-        Me.clearPointsCB = New System.Windows.Forms.CheckBox()
+        Me.autoCreateEventCB = New System.Windows.Forms.CheckBox()
         Me.defaultSavePathLabel = New System.Windows.Forms.Label()
         Me.defaultSavePathTF = New System.Windows.Forms.TextBox()
         Me.browseSavePathButton = New System.Windows.Forms.Button()
         Me.saveDefaultPathCB = New System.Windows.Forms.CheckBox()
+        Me.osdLabel = New System.Windows.Forms.Label()
+        Me.osdInPointCB = New System.Windows.Forms.CheckBox()
+        Me.osdOutPointCB = New System.Windows.Forms.CheckBox()
+        Me.osdAddEventCB = New System.Windows.Forms.CheckBox()
+        Me.osdLoopModeCB = New System.Windows.Forms.CheckBox()
         Me.SuspendLayout()
         '
         'previewTimeLabel
@@ -322,16 +327,16 @@ Partial Class optionsWindow
         Me.autoSaveCB.Text = "Auto-save .looper file on changes"
         Me.autoSaveCB.UseVisualStyleBackColor = True
         '
-        'clearPointsCB
+        'autoCreateEventCB
         '
-        Me.clearPointsCB.AutoSize = True
-        Me.clearPointsCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.clearPointsCB.Location = New System.Drawing.Point(13, 619)
-        Me.clearPointsCB.Name = "clearPointsCB"
-        Me.clearPointsCB.Size = New System.Drawing.Size(350, 21)
-        Me.clearPointsCB.TabIndex = 41
-        Me.clearPointsCB.Text = "Clear IN/OUT points after adding an event"
-        Me.clearPointsCB.UseVisualStyleBackColor = True
+        Me.autoCreateEventCB.AutoSize = True
+        Me.autoCreateEventCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.autoCreateEventCB.Location = New System.Drawing.Point(13, 619)
+        Me.autoCreateEventCB.Name = "autoCreateEventCB"
+        Me.autoCreateEventCB.Size = New System.Drawing.Size(350, 21)
+        Me.autoCreateEventCB.TabIndex = 41
+        Me.autoCreateEventCB.Text = "Auto-create event on Set Out Point"
+        Me.autoCreateEventCB.UseVisualStyleBackColor = True
         '
         'defaultSavePathLabel
         '
@@ -514,19 +519,91 @@ Partial Class optionsWindow
         Me.speedAmountLabel.TabIndex = 33
         Me.speedAmountLabel.Text = "Default Speed"
         '
+        'osdLabel
+        '
+        Me.osdLabel.AutoSize = True
+        Me.osdLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.osdLabel.Location = New System.Drawing.Point(415, 9)
+        Me.osdLabel.Name = "osdLabel"
+        Me.osdLabel.Size = New System.Drawing.Size(120, 17)
+        Me.osdLabel.TabIndex = 50
+        Me.osdLabel.Text = "OSD Notifications"
+        '
+        'osdInPointCB
+        '
+        Me.osdInPointCB.AutoSize = True
+        Me.osdInPointCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.osdInPointCB.Location = New System.Drawing.Point(420, 34)
+        Me.osdInPointCB.Name = "osdInPointCB"
+        Me.osdInPointCB.Size = New System.Drawing.Size(130, 21)
+        Me.osdInPointCB.TabIndex = 51
+        Me.osdInPointCB.Text = "Set IN Point"
+        Me.osdInPointCB.UseVisualStyleBackColor = True
+        '
+        'osdOutPointCB
+        '
+        Me.osdOutPointCB.AutoSize = True
+        Me.osdOutPointCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.osdOutPointCB.Location = New System.Drawing.Point(420, 57)
+        Me.osdOutPointCB.Name = "osdOutPointCB"
+        Me.osdOutPointCB.Size = New System.Drawing.Size(130, 21)
+        Me.osdOutPointCB.TabIndex = 52
+        Me.osdOutPointCB.Text = "Set OUT Point"
+        Me.osdOutPointCB.UseVisualStyleBackColor = True
+        '
+        'osdAddEventCB
+        '
+        Me.osdAddEventCB.AutoSize = True
+        Me.osdAddEventCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.osdAddEventCB.Location = New System.Drawing.Point(420, 80)
+        Me.osdAddEventCB.Name = "osdAddEventCB"
+        Me.osdAddEventCB.Size = New System.Drawing.Size(130, 21)
+        Me.osdAddEventCB.TabIndex = 53
+        Me.osdAddEventCB.Text = "Add Event"
+        Me.osdAddEventCB.UseVisualStyleBackColor = True
+        '
+        'osdLoopModeCB
+        '
+        Me.osdLoopModeCB.AutoSize = True
+        Me.osdLoopModeCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.osdLoopModeCB.Location = New System.Drawing.Point(420, 103)
+        Me.osdLoopModeCB.Name = "osdLoopModeCB"
+        Me.osdLoopModeCB.Size = New System.Drawing.Size(130, 21)
+        Me.osdLoopModeCB.TabIndex = 54
+        Me.osdLoopModeCB.Text = "Loop Mode Change"
+        Me.osdLoopModeCB.UseVisualStyleBackColor = True
+        '
+        'osdSaveCB
+        '
+        Me.osdSaveCB = New System.Windows.Forms.CheckBox()
+        Me.osdSaveCB.AutoSize = True
+        Me.osdSaveCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.osdSaveCB.Location = New System.Drawing.Point(420, 126)
+        Me.osdSaveCB.Name = "osdSaveCB"
+        Me.osdSaveCB.Size = New System.Drawing.Size(130, 21)
+        Me.osdSaveCB.TabIndex = 55
+        Me.osdSaveCB.Text = "Looper Saved"
+        Me.osdSaveCB.UseVisualStyleBackColor = True
+        '
         'optionsWindow
         '
         Me.AcceptButton = Me.savePrefsButton
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.CancelButton = Me.cancelPrefsButton
-        Me.ClientSize = New System.Drawing.Size(401, 765)
+        Me.ClientSize = New System.Drawing.Size(570, 765)
         Me.ControlBox = False
-        Me.Controls.Add(Me.clearPointsCB)
+        Me.Controls.Add(Me.osdSaveCB)
+        Me.Controls.Add(Me.osdLoopModeCB)
+        Me.Controls.Add(Me.osdAddEventCB)
+        Me.Controls.Add(Me.osdOutPointCB)
+        Me.Controls.Add(Me.osdInPointCB)
+        Me.Controls.Add(Me.osdLabel)
         Me.Controls.Add(Me.saveDefaultPathCB)
         Me.Controls.Add(Me.browseSavePathButton)
         Me.Controls.Add(Me.defaultSavePathTF)
         Me.Controls.Add(Me.defaultSavePathLabel)
+        Me.Controls.Add(Me.autoCreateEventCB)
         Me.Controls.Add(Me.autoSaveCB)
         Me.Controls.Add(Me.skipEventNameCB)
         Me.Controls.Add(Me.skipSaveConfirmCB)
@@ -616,9 +693,15 @@ Partial Class optionsWindow
     Friend WithEvents skipSaveConfirmCB As CheckBox
     Friend WithEvents skipEventNameCB As CheckBox
     Friend WithEvents autoSaveCB As CheckBox
+    Friend WithEvents autoCreateEventCB As CheckBox
     Friend WithEvents defaultSavePathLabel As Label
     Friend WithEvents defaultSavePathTF As TextBox
     Friend WithEvents browseSavePathButton As Button
     Friend WithEvents saveDefaultPathCB As CheckBox
-    Friend WithEvents clearPointsCB As CheckBox
+    Friend WithEvents osdLabel As Label
+    Friend WithEvents osdInPointCB As CheckBox
+    Friend WithEvents osdOutPointCB As CheckBox
+    Friend WithEvents osdAddEventCB As CheckBox
+    Friend WithEvents osdLoopModeCB As CheckBox
+    Friend WithEvents osdSaveCB As CheckBox
 End Class

@@ -57,6 +57,14 @@ Partial Class optionsWindow
         Me.saveSpeedCB = New System.Windows.Forms.CheckBox()
         Me.defaultSpeedTF = New System.Windows.Forms.TextBox()
         Me.speedAmountLabel = New System.Windows.Forms.Label()
+        Me.skipSaveConfirmCB = New System.Windows.Forms.CheckBox()
+        Me.skipEventNameCB = New System.Windows.Forms.CheckBox()
+        Me.autoSaveCB = New System.Windows.Forms.CheckBox()
+        Me.clearPointsCB = New System.Windows.Forms.CheckBox()
+        Me.defaultSavePathLabel = New System.Windows.Forms.Label()
+        Me.defaultSavePathTF = New System.Windows.Forms.TextBox()
+        Me.browseSavePathButton = New System.Windows.Forms.Button()
+        Me.saveDefaultPathCB = New System.Windows.Forms.CheckBox()
         Me.SuspendLayout()
         '
         'previewTimeLabel
@@ -281,10 +289,93 @@ Partial Class optionsWindow
         Me.forcePauseCB.Text = "Force MPC-HC/BE to pause when loading events"
         Me.forcePauseCB.UseVisualStyleBackColor = True
         '
+        'skipSaveConfirmCB
+        '
+        Me.skipSaveConfirmCB.AutoSize = True
+        Me.skipSaveConfirmCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.skipSaveConfirmCB.Location = New System.Drawing.Point(13, 559)
+        Me.skipSaveConfirmCB.Name = "skipSaveConfirmCB"
+        Me.skipSaveConfirmCB.Size = New System.Drawing.Size(300, 21)
+        Me.skipSaveConfirmCB.TabIndex = 34
+        Me.skipSaveConfirmCB.Text = "Skip save confirmation dialogs"
+        Me.skipSaveConfirmCB.UseVisualStyleBackColor = True
+        '
+        'skipEventNameCB
+        '
+        Me.skipEventNameCB.AutoSize = True
+        Me.skipEventNameCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.skipEventNameCB.Location = New System.Drawing.Point(13, 579)
+        Me.skipEventNameCB.Name = "skipEventNameCB"
+        Me.skipEventNameCB.Size = New System.Drawing.Size(350, 21)
+        Me.skipEventNameCB.TabIndex = 35
+        Me.skipEventNameCB.Text = "Auto-name events (skip name editor on add)"
+        Me.skipEventNameCB.UseVisualStyleBackColor = True
+        '
+        'autoSaveCB
+        '
+        Me.autoSaveCB.AutoSize = True
+        Me.autoSaveCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.autoSaveCB.Location = New System.Drawing.Point(13, 599)
+        Me.autoSaveCB.Name = "autoSaveCB"
+        Me.autoSaveCB.Size = New System.Drawing.Size(350, 21)
+        Me.autoSaveCB.TabIndex = 36
+        Me.autoSaveCB.Text = "Auto-save .looper file on changes"
+        Me.autoSaveCB.UseVisualStyleBackColor = True
+        '
+        'clearPointsCB
+        '
+        Me.clearPointsCB.AutoSize = True
+        Me.clearPointsCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.clearPointsCB.Location = New System.Drawing.Point(13, 619)
+        Me.clearPointsCB.Name = "clearPointsCB"
+        Me.clearPointsCB.Size = New System.Drawing.Size(350, 21)
+        Me.clearPointsCB.TabIndex = 41
+        Me.clearPointsCB.Text = "Clear IN/OUT points after adding an event"
+        Me.clearPointsCB.UseVisualStyleBackColor = True
+        '
+        'defaultSavePathLabel
+        '
+        Me.defaultSavePathLabel.AutoSize = True
+        Me.defaultSavePathLabel.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.defaultSavePathLabel.Location = New System.Drawing.Point(7, 645)
+        Me.defaultSavePathLabel.Name = "defaultSavePathLabel"
+        Me.defaultSavePathLabel.Size = New System.Drawing.Size(200, 17)
+        Me.defaultSavePathLabel.TabIndex = 37
+        Me.defaultSavePathLabel.Text = "Default .looper Save Location"
+        '
+        'defaultSavePathTF
+        '
+        Me.defaultSavePathTF.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.defaultSavePathTF.Location = New System.Drawing.Point(10, 665)
+        Me.defaultSavePathTF.Name = "defaultSavePathTF"
+        Me.defaultSavePathTF.Size = New System.Drawing.Size(310, 25)
+        Me.defaultSavePathTF.TabIndex = 38
+        '
+        'browseSavePathButton
+        '
+        Me.browseSavePathButton.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.browseSavePathButton.Location = New System.Drawing.Point(325, 665)
+        Me.browseSavePathButton.Name = "browseSavePathButton"
+        Me.browseSavePathButton.Size = New System.Drawing.Size(65, 25)
+        Me.browseSavePathButton.TabIndex = 39
+        Me.browseSavePathButton.Text = "Browse"
+        Me.browseSavePathButton.UseVisualStyleBackColor = True
+        '
+        'saveDefaultPathCB
+        '
+        Me.saveDefaultPathCB.AutoSize = True
+        Me.saveDefaultPathCB.Font = New System.Drawing.Font("Segoe UI", 9.75!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.saveDefaultPathCB.Location = New System.Drawing.Point(10, 693)
+        Me.saveDefaultPathCB.Name = "saveDefaultPathCB"
+        Me.saveDefaultPathCB.Size = New System.Drawing.Size(183, 21)
+        Me.saveDefaultPathCB.TabIndex = 40
+        Me.saveDefaultPathCB.Text = "Save this setting as Default"
+        Me.saveDefaultPathCB.UseVisualStyleBackColor = True
+        '
         'savePrefsButton
         '
         Me.savePrefsButton.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.savePrefsButton.Location = New System.Drawing.Point(280, 567)
+        Me.savePrefsButton.Location = New System.Drawing.Point(280, 720)
         Me.savePrefsButton.Name = "savePrefsButton"
         Me.savePrefsButton.Size = New System.Drawing.Size(110, 35)
         Me.savePrefsButton.TabIndex = 24
@@ -295,7 +386,7 @@ Partial Class optionsWindow
         '
         Me.cancelPrefsButton.DialogResult = System.Windows.Forms.DialogResult.Cancel
         Me.cancelPrefsButton.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.cancelPrefsButton.Location = New System.Drawing.Point(159, 567)
+        Me.cancelPrefsButton.Location = New System.Drawing.Point(159, 720)
         Me.cancelPrefsButton.Name = "cancelPrefsButton"
         Me.cancelPrefsButton.Size = New System.Drawing.Size(110, 35)
         Me.cancelPrefsButton.TabIndex = 23
@@ -357,7 +448,7 @@ Partial Class optionsWindow
         '
         Me.customHotKeysButton.DialogResult = System.Windows.Forms.DialogResult.Cancel
         Me.customHotKeysButton.Font = New System.Drawing.Font("Segoe UI", 9.0!, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
-        Me.customHotKeysButton.Location = New System.Drawing.Point(9, 567)
+        Me.customHotKeysButton.Location = New System.Drawing.Point(9, 720)
         Me.customHotKeysButton.Name = "customHotKeysButton"
         Me.customHotKeysButton.Size = New System.Drawing.Size(138, 35)
         Me.customHotKeysButton.TabIndex = 22
@@ -429,8 +520,16 @@ Partial Class optionsWindow
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.CancelButton = Me.cancelPrefsButton
-        Me.ClientSize = New System.Drawing.Size(401, 613)
+        Me.ClientSize = New System.Drawing.Size(401, 765)
         Me.ControlBox = False
+        Me.Controls.Add(Me.clearPointsCB)
+        Me.Controls.Add(Me.saveDefaultPathCB)
+        Me.Controls.Add(Me.browseSavePathButton)
+        Me.Controls.Add(Me.defaultSavePathTF)
+        Me.Controls.Add(Me.defaultSavePathLabel)
+        Me.Controls.Add(Me.autoSaveCB)
+        Me.Controls.Add(Me.skipEventNameCB)
+        Me.Controls.Add(Me.skipSaveConfirmCB)
         Me.Controls.Add(Me.saveSpeedCB)
         Me.Controls.Add(Me.defaultSpeedTF)
         Me.Controls.Add(Me.speedAmountLabel)
@@ -514,4 +613,12 @@ Partial Class optionsWindow
     Friend WithEvents saveSpeedCB As CheckBox
     Friend WithEvents defaultSpeedTF As TextBox
     Friend WithEvents speedAmountLabel As Label
+    Friend WithEvents skipSaveConfirmCB As CheckBox
+    Friend WithEvents skipEventNameCB As CheckBox
+    Friend WithEvents autoSaveCB As CheckBox
+    Friend WithEvents defaultSavePathLabel As Label
+    Friend WithEvents defaultSavePathTF As TextBox
+    Friend WithEvents browseSavePathButton As Button
+    Friend WithEvents saveDefaultPathCB As CheckBox
+    Friend WithEvents clearPointsCB As CheckBox
 End Class

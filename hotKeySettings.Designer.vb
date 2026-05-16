@@ -34,6 +34,7 @@ Partial Class hotKeySettings
         Me.hotKeysLV = New System.Windows.Forms.ListView()
         Me.hotKeyColumn = CType(New System.Windows.Forms.ColumnHeader(), System.Windows.Forms.ColumnHeader)
         Me.resetAllButton = New System.Windows.Forms.Button()
+        Me.disableHKButton = New System.Windows.Forms.Button()
         Me.SuspendLayout()
         '
         'currentHKTF
@@ -138,7 +139,7 @@ Partial Class hotKeySettings
         Me.hotKeysLV.FullRowSelect = True
         Me.hotKeysLV.HideSelection = False
         Me.hotKeysLV.Location = New System.Drawing.Point(-2, -1)
-        Me.hotKeysLV.MultiSelect = False
+        Me.hotKeysLV.MultiSelect = True
         Me.hotKeysLV.Name = "hotKeysLV"
         Me.hotKeysLV.Size = New System.Drawing.Size(376, 258)
         Me.hotKeysLV.TabIndex = 1
@@ -149,6 +150,17 @@ Partial Class hotKeySettings
         '
         Me.hotKeyColumn.Text = "Hotkey"
         Me.hotKeyColumn.Width = 350
+        '
+        'disableHKButton
+        '
+        Me.disableHKButton.Enabled = False
+        Me.disableHKButton.Font = New System.Drawing.Font("Segoe UI", 8.25!, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, CType(0, Byte))
+        Me.disableHKButton.Location = New System.Drawing.Point(316, 314)
+        Me.disableHKButton.Name = "disableHKButton"
+        Me.disableHKButton.Size = New System.Drawing.Size(47, 24)
+        Me.disableHKButton.TabIndex = 43
+        Me.disableHKButton.Text = "DISABLE"
+        Me.disableHKButton.UseVisualStyleBackColor = True
         '
         'resetAllButton
         '
@@ -165,6 +177,7 @@ Partial Class hotKeySettings
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(375, 375)
+        Me.Controls.Add(Me.disableHKButton)
         Me.Controls.Add(Me.resetAllButton)
         Me.Controls.Add(Me.hotKeysLV)
         Me.Controls.Add(Me.OKButton)
@@ -200,4 +213,5 @@ Partial Class hotKeySettings
     Friend WithEvents hotKeysLV As ListView
     Friend WithEvents hotKeyColumn As ColumnHeader
     Friend WithEvents resetAllButton As Button
+    Friend WithEvents disableHKButton As Button
 End Class

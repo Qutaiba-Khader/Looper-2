@@ -1,4 +1,4 @@
-﻿Public Class hotKeySettings
+Public Class hotKeySettings
     Private Sub HotKeySettings_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         hotKeysLV.Items.Clear() ' delete all items in the hotkey list view (if they exist from a previous session) to get things started
 
@@ -9,9 +9,18 @@
         mainWindow.clearHotKeys() ' turn hotkeys off (this forces them to reload when the Options window closes)
 
         For currentItem = 0 To UBound(mainWindow.hotKeyList)
-            hotKeysLV.Items.Add(New ListViewItem(mainWindow.hotKeyList(currentItem, 2))) ' add hotkey to the list
+            Dim itemText As String = mainWindow.hotKeyList(currentItem, 2)
 
-            If Not mainWindow.hotKeyList(currentItem, 1) = Nothing Then ' if this hotkey has a custom setting, then change the formatting for that hotkey
+            If hotKeyDisabled(currentItem) Then
+                itemText = "[DISABLED] " & itemText
+            End If
+
+            hotKeysLV.Items.Add(New ListViewItem(itemText))
+
+            If hotKeyDisabled(currentItem) Then
+                hotKeysLV.Items(currentItem).ForeColor = Color.Gray
+                hotKeysLV.Items(currentItem).BackColor = Color.FromArgb(240, 240, 240)
+            ElseIf Not mainWindow.hotKeyList(currentItem, 1) = Nothing Then
                 hotKeysLV.Items(currentItem).Font = playlistWindow.boldFont
                 hotKeysLV.Items(currentItem).BackColor = Color.LightBlue
             End If
@@ -19,28 +28,54 @@
     End Sub
 
     Private Sub hotKeysLV_SelectedIndexChanged(sender As Object, e As EventArgs) Handles hotKeysLV.SelectedIndexChanged
-        If hotKeysLV.SelectedIndices.Count = 1 Then ' sanity check, as the below function will error out if this isn't correct (you can't get index 0 if nothing's selected!)
-            Dim hkIDX As Integer = hotKeysLV.SelectedIndices(0) ' get the currently selected item in the list view
+        If hotKeysLV.SelectedIndices.Count >= 1 Then
+            Dim hkIDX As Integer = hotKeysLV.SelectedIndices(0) ' get the first selected item
 
-            If mainWindow.hotKeyList(hkIDX, 1) = Nothing Then ' if there isn't a custom hotkey, then display the normal look
-                currentHKLabel.Text = "CURRENT HOTKEY"
+            If hotKeysLV.SelectedIndices.Count = 1 Then
+                ' Single selection — show details
+                If mainWindow.hotKeyList(hkIDX, 1) = Nothing Then
+                    currentHKLabel.Text = "CURRENT HOTKEY"
+                    currentHKTF.BackColor = Color.Gainsboro
+                    currentHKTF.Text = mainWindow.hotKeyList(hkIDX, 0)
+                    currentHKDesc.Text = convertKeyCodeToString(mainWindow.hotKeyList(hkIDX, 0))
+                    setDefaultHKButton.Enabled = False
+                Else
+                    currentHKLabel.Text = "CURRENT CUSTOM HOTKEY"
+                    currentHKTF.BackColor = Color.LightBlue
+                    currentHKTF.Text = mainWindow.hotKeyList(hkIDX, 1)
+                    currentHKDesc.Text = convertKeyCodeToString(mainWindow.hotKeyList(hkIDX, 1))
+                    setDefaultHKButton.Enabled = True
+                End If
+
+                setNewHKButton.Enabled = False
+                newHKTF.Text = Nothing
+                newHKDesc.Text = Nothing
+            Else
+                ' Multiple selection — hide single-item details
+                currentHKLabel.Text = hotKeysLV.SelectedIndices.Count & " HOTKEYS SELECTED"
                 currentHKTF.BackColor = Color.Gainsboro
-                currentHKTF.Text = mainWindow.hotKeyList(hkIDX, 0)
-                currentHKDesc.Text = convertKeyCodeToString(mainWindow.hotKeyList(hkIDX, 0))
+                currentHKTF.Text = Nothing
+                currentHKDesc.Text = Nothing
                 setDefaultHKButton.Enabled = False
-            Else ' if there IS a custom hotkey, then change the color of the background
-                currentHKLabel.Text = "CURRENT CUSTOM HOTKEY"
-                currentHKTF.BackColor = Color.LightBlue
-                currentHKTF.Text = mainWindow.hotKeyList(hkIDX, 1)
-                currentHKDesc.Text = convertKeyCodeToString(mainWindow.hotKeyList(hkIDX, 1))
-                setDefaultHKButton.Enabled = True ' if we have a custom hotkey, allow resetting it
+                setNewHKButton.Enabled = False
+                newHKTF.Text = Nothing
+                newHKDesc.Text = Nothing
             End If
 
-            setNewHKButton.Enabled = False ' turn the change button OFF until you change the "new hotkey" field
+            ' Update the disable/enable button — check if any selected are enabled
+            Dim anyEnabled As Boolean = False
+            For i As Integer = 0 To hotKeysLV.SelectedIndices.Count - 1
+                If Not hotKeyDisabled(hotKeysLV.SelectedIndices(i)) Then anyEnabled = True
+            Next
 
-            ' clear the "new hotkey" field when loading an existing hotkey
-            newHKTF.Text = Nothing
-            newHKDesc.Text = Nothing
+            If anyEnabled Then
+                disableHKButton.Text = "DISABLE"
+            Else
+                disableHKButton.Text = "ENABLE"
+            End If
+            disableHKButton.Enabled = True
+        Else
+            disableHKButton.Enabled = False
         End If
     End Sub
 
@@ -143,20 +178,60 @@
         End If
     End Sub
 
+    Private Sub disableHKButton_Click(sender As Object, e As EventArgs) Handles disableHKButton.Click
+        If hotKeysLV.SelectedIndices.Count >= 1 Then
+            ' Determine action: if button says DISABLE, disable all selected; if ENABLE, enable all selected
+            Dim disabling As Boolean = (disableHKButton.Text = "DISABLE")
+
+            hotKeysLV.BeginUpdate()
+            For i As Integer = 0 To hotKeysLV.SelectedIndices.Count - 1
+                Dim hkIDX As Integer = hotKeysLV.SelectedIndices(i)
+                hotKeyDisabled(hkIDX) = disabling
+
+                If disabling Then
+                    hotKeysLV.Items(hkIDX).Text = "[DISABLED] " & mainWindow.hotKeyList(hkIDX, 2)
+                    hotKeysLV.Items(hkIDX).ForeColor = Color.Gray
+                    hotKeysLV.Items(hkIDX).BackColor = Color.FromArgb(240, 240, 240)
+                Else
+                    hotKeysLV.Items(hkIDX).Text = mainWindow.hotKeyList(hkIDX, 2)
+                    hotKeysLV.Items(hkIDX).ForeColor = Color.Black
+
+                    If Not mainWindow.hotKeyList(hkIDX, 1) = Nothing Then
+                        hotKeysLV.Items(hkIDX).Font = playlistWindow.boldFont
+                        hotKeysLV.Items(hkIDX).BackColor = Color.LightBlue
+                    Else
+                        hotKeysLV.Items(hkIDX).Font = playlistWindow.normalFont
+                        hotKeysLV.Items(hkIDX).BackColor = Color.White
+                    End If
+                End If
+            Next
+            hotKeysLV.EndUpdate()
+
+            ' Toggle button text
+            If disabling Then
+                disableHKButton.Text = "ENABLE"
+            Else
+                disableHKButton.Text = "DISABLE"
+            End If
+        End If
+    End Sub
+
     Private Sub resetAllButton_Click(sender As Object, e As EventArgs) Handles resetAllButton.Click
-        Dim returnValue = MessageBox.Show("Are you sure you want to set all hotkeys back to their default values?",
+        Dim returnValue = MessageBox.Show(Me, "Are you sure you want to set all hotkeys back to their default values?",
                                           "Reset Hotkeys to Defaults?",
                                           MessageBoxButtons.YesNo,
                                           MessageBoxIcon.Question,
-                                          MessageBoxDefaultButton.Button1,
-                                          MessageBoxOptions.DefaultDesktopOnly)
+                                          MessageBoxDefaultButton.Button1)
 
         If returnValue = DialogResult.Yes Then
             For currentItem = 0 To UBound(mainWindow.hotKeyList)
                 mainWindow.hotKeyList(currentItem, 1) = Nothing ' clear any special hotkey from the current index
+                hotKeyDisabled(currentItem) = False ' re-enable all hotkeys
 
                 ' clear formatting for ALL of the items in the list
+                hotKeysLV.Items(currentItem).Text = mainWindow.hotKeyList(currentItem, 2)
                 hotKeysLV.Items(currentItem).Font = playlistWindow.normalFont
+                hotKeysLV.Items(currentItem).ForeColor = Color.Black
                 hotKeysLV.Items(currentItem).BackColor = Color.White
             Next
 

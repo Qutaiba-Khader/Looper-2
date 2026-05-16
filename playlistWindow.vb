@@ -1,4 +1,4 @@
-﻿Public Class playlistWindow
+Public Class playlistWindow
     Public currentLooperFile As String = Nothing ' the current .looper file loaded in the playlist
 
     Public currentPlayingEvent As Integer = -1 ' which event is currently playing
@@ -28,6 +28,17 @@
     ' ======================================================================================
     ' ================= FORM FUNCTIONS =====================================================
     ' ======================================================================================
+
+    ' Show a MessageBox that stays on top of MPC-HC, then restore previous Z-order
+    Private Function ShowTopMostMessageBox(msg As String, title As String, buttons As MessageBoxButtons, icon As MessageBoxIcon, defaultBtn As MessageBoxDefaultButton) As DialogResult
+        Dim wasTopMost As Boolean = Me.TopMost ' remember previous state
+        Me.TopMost = True
+        Me.Activate()
+        Dim result = MessageBox.Show(Me, msg, title, buttons, icon, defaultBtn)
+        Me.TopMost = wasTopMost ' restore previous TopMost state
+        If mainWindow.MPCHandle <> IntPtr.Zero Then SetForegroundWindow(mainWindow.MPCHandle) ' give focus back to MPC-HC
+        Return result
+    End Function
 
     Private Sub playlistWindow_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Me.Icon = My.Resources.icon
@@ -117,6 +128,13 @@
         mainWindow.isQuitting = True ' set this to true to cause the Threads to skip checking position/hotkeys for now
 
         If isModified = True Then ' if isModified is true, then ask to save first
+            If skipSaveConfirmations Then
+                If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                    autoSaveCurrentFile() ' auto-save silently before quitting
+                End If
+                Return DialogResult.No ' skip the dialog entirely
+            End If
+
             Dim MsgBoxMsg As String
             Dim MsgBoxButtons As MessageBoxButtons
 
@@ -135,15 +153,14 @@
                         & vbCrLf & "Click No to quit without saving"
             End If
 
-            Dim returnValue = MessageBox.Show(MsgBoxMsg,
+            Dim returnValue = ShowTopMostMessageBox(MsgBoxMsg,
                                               "Save Playlist Before Quitting?",
                                               MsgBoxButtons,
                                               MessageBoxIcon.Question,
-                                              MessageBoxDefaultButton.Button1,
-                                              MessageBoxOptions.DefaultDesktopOnly)
+                                              MessageBoxDefaultButton.Button1)
 
             If returnValue = DialogResult.Yes Then
-                Return saveLooperFile() ' save the looper file                
+                Return saveLooperFile() ' save the looper file
             Else ' if the result is "No" or "Cancel", then just return that value
                 Return returnValue
             End If
@@ -212,16 +229,22 @@
 
         If clearEventList = True Then ' if we're not loading a brand-new looper file
             If isModified = True Then ' and if the list has been modified
-                ' then ask if we want to save this list first before overwriting it
-                confirmSave = MessageBox.Show("Do you want to save the current playlist before opening another .looper file?" _
-                                 & vbCrLf & vbCrLf & "Click Yes to save" _
-                                 & vbCrLf & "No to continue without saving" _
-                                 & vbCrLf & "Cancel to go back to Looper without doing anything",
-                                              "Save Playlist Before Opening?",
-                                              MessageBoxButtons.YesNoCancel,
-                                              MessageBoxIcon.Question,
-                                              MessageBoxDefaultButton.Button1,
-                                              MessageBoxOptions.DefaultDesktopOnly)
+                If skipSaveConfirmations Then
+                    If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                        autoSaveCurrentFile() ' auto-save silently
+                    End If
+                    confirmSave = DialogResult.No ' skip dialog
+                Else
+                    ' then ask if we want to save this list first before overwriting it
+                    confirmSave = ShowTopMostMessageBox("Do you want to save the current playlist before opening another .looper file?" _
+                                     & vbCrLf & vbCrLf & "Click Yes to save" _
+                                     & vbCrLf & "No to continue without saving" _
+                                     & vbCrLf & "Cancel to go back to Looper without doing anything",
+                                                  "Save Playlist Before Opening?",
+                                                  MessageBoxButtons.YesNoCancel,
+                                                  MessageBoxIcon.Question,
+                                                  MessageBoxDefaultButton.Button1)
+                End If
 
                 If confirmSave = DialogResult.Yes Then
                     confirmSave = saveLooperFile() ' save the looper file (or cancel the process, either by dialog or by file-choose-dialog)
@@ -316,8 +339,7 @@
                                              "Warning!",
                                              MessageBoxButtons.OK,
                                              MessageBoxIcon.Warning,
-                                             MessageBoxDefaultButton.Button1,
-                                             MessageBoxOptions.DefaultDesktopOnly)
+                                             MessageBoxDefaultButton.Button1)
                     End If
 
                     clearEventsButton.Enabled = True
@@ -358,7 +380,7 @@
         Dim findFilesPrompt As Integer = DialogResult.No ' if there's just one event, then we just need to find one, so we don't need the dialog asking
 
         If missingEvents.Count > 1 Then
-            findFilesPrompt = MessageBox.Show("The current playlist has " & missingEvents.Count & " events that point" & vbCrLf &
+            findFilesPrompt = ShowTopMostMessageBox("The current playlist has " & missingEvents.Count & " events that point" & vbCrLf &
             "to file paths that can not be located." & vbCrLf & vbCrLf &
             "Would you like to locate all of those missing files," & vbCrLf &
             "just the current event's missing file," & vbCrLf &
@@ -369,8 +391,7 @@
                                   "Missing Files!",
                                   MessageBoxButtons.YesNoCancel,
                                   MessageBoxIcon.Question,
-                                  MessageBoxDefaultButton.Button1,
-                                  MessageBoxOptions.DefaultDesktopOnly)
+                                  MessageBoxDefaultButton.Button1)
 
             If findFilesPrompt = DialogResult.Yes Then
                 specificEvent = -1 ' look for all of the files and not just one specific one
@@ -387,9 +408,22 @@
 
                 If specificEvent = -1 Or specificEvent = missingEvents(a) Then ' if the event we're requesting is this specific one OR isn't a specific event...
                     If eventsList.Items(missingEvents(a)).BackColor = errorColor Then ' if this event still has an error, then...
+                        ' Set the initial directory to the missing file's original directory (or previous found path)
+                        Dim initialDir As String = Environment.GetFolderPath(Environment.SpecialFolder.Desktop)
+                        If previousPath IsNot Nothing Then
+                            initialDir = previousPath
+                        Else
+                            Try
+                                Dim origDir = My.Computer.FileSystem.GetFileInfo(pathToFind).DirectoryName
+                                If My.Computer.FileSystem.DirectoryExists(origDir) Then initialDir = origDir
+                            Catch
+                            End Try
+                        End If
+
                         Using fileFind As New OpenFileDialog With {
                            .Title = "Where is the file originally found at " & pathToFind & " now?",
-                           .InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                           .InitialDirectory = initialDir,
+                           .FileName = pathName,
                            .Filter = "Matching|" & pathName & "|" & pathExt & " Files|*." & pathExt & "|All Files|*.*"
                             }
 
@@ -397,17 +431,22 @@
                                 setIsModified(1)
                                 previousPath = My.Computer.FileSystem.GetFileInfo(fileFind.FileName).DirectoryName.ToString ' check this against the next file
 
+                                ' Get the old broken directory to fix all events sharing it
+                                Dim brokenDir As String = My.Computer.FileSystem.GetFileInfo(pathToFind).DirectoryName
+
                                 For b As Integer = 0 To missingEvents.Count - 1 ' scan through the rest of the missing items to see if paths are restored
-                                    If eventsList.Items(missingEvents(b)).SubItems(11).Text = pathToFind Then ' if this event matches the "missing" file path
+                                    If eventsList.Items(missingEvents(b)).SubItems(11).Text = pathToFind Then ' if this event matches the exact "missing" file path
                                         eventsList.Items(missingEvents(b)).SubItems(11).Text = fileFind.FileName ' replace it with the newly found file
                                         eventsList.Items(missingEvents(b)).BackColor = foundColor ' re-color that event green to show we've found the correct path
-                                    Else ' if this event doesn't match the same file, still check it against the *directory*
-                                        Dim otherPathToFind As String = eventsList.Items(missingEvents(b)).SubItems(11).Text ' a comparison to check all files in the directory
-                                        Dim otherPathName As String = My.Computer.FileSystem.GetFileInfo(otherPathToFind).Name ' this is the current base file we're looking for
+                                    Else ' if this event doesn't match the same file, check if it's in the same broken directory
+                                        Dim otherPathToFind As String = eventsList.Items(missingEvents(b)).SubItems(11).Text
+                                        Dim otherPathName As String = My.Computer.FileSystem.GetFileInfo(otherPathToFind).Name
+                                        Dim otherPathDir As String = My.Computer.FileSystem.GetFileInfo(otherPathToFind).DirectoryName
 
-                                        If My.Computer.FileSystem.GetFileInfo(previousPath & "\" & otherPathName).Exists Then ' if the file exists in the .looper file's path
-                                            eventsList.Items(missingEvents(a)).SubItems(11).Text = previousPath & "\" & otherPathName ' replace it with the newly found file
-                                            eventsList.Items(missingEvents(a)).BackColor = foundColor ' re-color that event green to show we've found the correct path
+                                        ' Fix all events that share the same broken directory
+                                        If My.Computer.FileSystem.GetFileInfo(previousPath & "\" & otherPathName).Exists Then
+                                            eventsList.Items(missingEvents(b)).SubItems(11).Text = previousPath & "\" & otherPathName
+                                            eventsList.Items(missingEvents(b)).BackColor = foundColor
                                         End If
                                     End If
                                 Next
@@ -451,22 +490,26 @@
             If currentLooperFile = Nothing Or saveSubset = True Then
                 savefile = returnSaveFile(saveSubset) ' if saveSubset is true, this will change the title on the Save... prompt
             Else
-                checkOverwrite = MessageBox.Show("Are you sure you want to overwrite the current .looper file?" & vbCrLf & vbCrLf &
-                                            "Choose Yes to overwrite the current .looper file" & vbCrLf &
-                                            "No to save to a New .looper file" & vbCrLf &
-                                            "Or Cancel to abort saving completely",
-                                              "Overwrite Current File?",
-                                              MessageBoxButtons.YesNoCancel,
-                                              MessageBoxIcon.Question,
-                                              MessageBoxDefaultButton.Button1,
-                                              MessageBoxOptions.DefaultDesktopOnly)
-
-                If checkOverwrite = DialogResult.Yes Then
+                If skipSaveConfirmations Then
+                    checkOverwrite = DialogResult.Yes ' skip the overwrite confirmation
                     savefile = currentLooperFile
-                ElseIf checkOverwrite = DialogResult.No Then
-                    savefile = returnSaveFile()
-                ElseIf checkOverwrite = DialogResult.Cancel Then
-                    ' don't do anything, because we chose to cancel, so saveFile = Nothing
+                Else
+                    checkOverwrite = ShowTopMostMessageBox("Are you sure you want to overwrite the current .looper file?" & vbCrLf & vbCrLf &
+                                                "Choose Yes to overwrite the current .looper file" & vbCrLf &
+                                                "No to save to a New .looper file" & vbCrLf &
+                                                "Or Cancel to abort saving completely",
+                                                  "Overwrite Current File?",
+                                                  MessageBoxButtons.YesNoCancel,
+                                                  MessageBoxIcon.Question,
+                                                  MessageBoxDefaultButton.Button1)
+
+                    If checkOverwrite = DialogResult.Yes Then
+                        savefile = currentLooperFile
+                    ElseIf checkOverwrite = DialogResult.No Then
+                        savefile = returnSaveFile()
+                    ElseIf checkOverwrite = DialogResult.Cancel Then
+                        ' don't do anything, because we chose to cancel, so saveFile = Nothing
+                    End If
                 End If
             End If
 
@@ -533,15 +576,14 @@
                             eventsList.Items(a).Selected = False ' de-select this item when re-saving it
                         Next
                     Else
-                        Dim loadSubset = MessageBox.Show("You just saved a selection of events to a new .looper file." & vbCrLf &
+                        Dim loadSubset = ShowTopMostMessageBox("You just saved a selection of events to a new .looper file." & vbCrLf &
                                             "Would you like to open that new file?" & vbCrLf & vbCrLf &
                                             "Choose Yes to open the new .looper file" & vbCrLf &
                                             "Choose No to continue using the current file",
                                               "Open Looper file?",
                                               MessageBoxButtons.YesNo,
                                               MessageBoxIcon.Question,
-                                              MessageBoxDefaultButton.Button2,
-                                              MessageBoxOptions.DefaultDesktopOnly)
+                                              MessageBoxDefaultButton.Button2)
 
                         If loadSubset = DialogResult.Yes Then
                             loadLooperFile(True, savefile)
@@ -587,6 +629,8 @@
         If filesMatching = eventsList.Items.Count Then ' if the filenames are the same for every event, then default to saving a sidecar file
             saveFileDialog.FileName = My.Computer.FileSystem.GetFileInfo(checkAgainst).Name & ".looper"
             saveFileDialog.InitialDirectory = My.Computer.FileSystem.GetFileInfo(checkAgainst).Directory.ToString
+        ElseIf defaultLooperSavePath IsNot Nothing AndAlso defaultLooperSavePath <> "" Then
+            saveFileDialog.InitialDirectory = defaultLooperSavePath ' use the default save path from preferences
         End If
 
         ' ----------------- SHOW THE DIALOG AND RETURN -----------------
@@ -728,7 +772,7 @@
             ' replace [F] with the currently playing file's filename
             Dim newEventName As String = Replace(mainWindow.newEventString, "[F]", System.IO.Path.GetFileName(mainWindow.currentPlayingFile))
             ' replace [f] with the currently playing file's filename (minus the extension)
-            newEventName = Replace(mainWindow.newEventString, "[f]", System.IO.Path.GetFileNameWithoutExtension(mainWindow.currentPlayingFile))
+            newEventName = Replace(newEventName, "[f]", System.IO.Path.GetFileNameWithoutExtension(mainWindow.currentPlayingFile))
             ' replace [#] with the current # in the events list
             newEventName = Replace(newEventName, "[#]", (eventsList.Items.Count + 1).ToString())
 
@@ -750,25 +794,33 @@
                 eventsList.Items.Add(newEvent)
             End If
 
+            eventsList.BeginUpdate() ' suspend UI redraws during batch updates
+
             currentPlayingEvent = newIndex ' mark the newly inserted (or added) event as the current playing event
             setIsModified(1) ' we've added something, so we're now modified
 
-            For a As Integer = 0 To eventsList.Items.Count - 1
-                eventsList.Items(a).Selected = False ' clear all other selections
-            Next
-
+            eventsList.SelectedIndices.Clear() ' clear all other selections
             highlightEvent(newIndex) ' mark the new event as the currently playing event by bolding the text
-
-            ' select the new item as the current item
-            eventsList.Select()
             eventsList.Items(newIndex).EnsureVisible()
             eventsList.Items(newIndex).Selected = True
 
+            eventsList.EndUpdate() ' resume UI redraws
+
             tallyTotalList() ' re-tabulate the event list tally
-
-            editListViewItem(newIndex) ' go into the text editor
-
             totalNumberOfEvents += 1 ' increment the total number of events counter (to add one at the end)
+
+            If skipEventNameEditor = False Then
+                editListViewItem(newIndex) ' go into the text editor
+            End If
+
+            If clearPointsAfterAdd Then
+                mainWindow.clearInPoint() ' reset IN point for next event
+                mainWindow.clearOutPoint() ' reset OUT point for next event
+            End If
+
+            If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                autoSaveCurrentFile() ' auto-save after adding event
+            End If
         End If
     End Sub
 
@@ -801,20 +853,11 @@
                             "Would you like to do that?"
                     End If
 
-                    confirmDelete = MessageBox.Show(MsgBoxMsg,
+                    confirmDelete = ShowTopMostMessageBox(MsgBoxMsg,
                                               "Clear Entire Playlist?",
                                               MessageBoxButtons.OKCancel,
                                               MessageBoxIcon.Question,
-                                              MessageBoxDefaultButton.Button1,
-                                              MessageBoxOptions.DefaultDesktopOnly)
-
-                    If confirmDelete = DialogResult.OK Then
-                        If inSearchMode = False Then
-                            clearEventsList() ' clear the entire events list
-                        Else
-                            restoreFromSearch() ' switch from Search mode to normal mode again
-                        End If
-                    End If
+                                              MessageBoxDefaultButton.Button1)
                 Else ' we have selected some items, but not ALL of them
                     Dim titleText As String ' change the title if we're in Search mode
                     If inSearchMode = False Then
@@ -838,20 +881,33 @@
                         MsgBoxMsg += "this event?"
                     End If
 
-                    confirmDelete = MessageBox.Show(MsgBoxMsg,
+                    confirmDelete = ShowTopMostMessageBox(MsgBoxMsg,
                                               titleText,
                                               MessageBoxButtons.OKCancel,
                                               MessageBoxIcon.Question,
-                                              MessageBoxDefaultButton.Button1,
-                                              MessageBoxOptions.DefaultDesktopOnly)
+                                              MessageBoxDefaultButton.Button1)
+                End If
 
-                    If confirmDelete = DialogResult.OK Then
+                If confirmDelete = DialogResult.OK Then
+                    If selectedItemsCount = eventsList.Items.Count Then
+                        If inSearchMode = False Then
+                            clearEventsList()
+                        Else
+                            restoreFromSearch()
+                        End If
+                    Else
+                        eventsList.BeginUpdate() ' prevent UI flicker during bulk delete
                         For a As Integer = selectedItemsCount - 1 To 0 Step -1 ' delete items from the end to the back, so the index stays correct
                             eventsList.Items.RemoveAt(eventsList.SelectedItems.Item(a).Index)
                         Next
+                        eventsList.EndUpdate()
 
                         setIsModified(1)
                         tallyTotalList() ' re-tabulate the event list tally
+
+                        If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                            autoSaveCurrentFile() ' auto-save after delete
+                        End If
                     End If
                 End If
             End If
@@ -877,6 +933,49 @@
 
             setIsModified(1) ' we've modified the event
             tallyTotalList() ' re-tabulate the event list tally
+
+            If autoSaveLooper And currentLooperFile IsNot Nothing Then
+                autoSaveCurrentFile() ' auto-save after modify
+            End If
+        End If
+    End Sub
+
+    Private Sub autoSaveCurrentFile()
+        ' Silently save the current looper file without any dialogs
+        If currentLooperFile IsNot Nothing And eventsList.Items.Count > 0 Then
+            Dim sb As New System.Text.StringBuilder(eventsList.Items.Count * 120) ' pre-allocate buffer
+
+            For a As Integer = 0 To eventsList.Items.Count - 1
+                Dim item = eventsList.Items(a)
+                Dim speed = item.SubItems(2).Text
+                Dim repeats = item.SubItems(3).Text
+                Dim xP = item.SubItems(7).Text
+                Dim yP = item.SubItems(8).Text
+                Dim xZ = item.SubItems(9).Text
+                Dim yZ = item.SubItems(10).Text
+
+                If speed <> "100" Then sb.Append("<S:").Append(speed).Append(">")
+                If repeats <> "1" Then sb.Append("<L:").Append(repeats).Append(">")
+
+                ' Compare strings directly to avoid Double.TryParse overhead
+                If Not (xP = "0.5" And yP = "0.5" And xZ = "1" And yZ = "1") AndAlso
+                   Not (xP = "0.5" And yP = "0.5" And xZ = "1.0" And yZ = "1.0") Then
+                    sb.Append("<Z:").Append(xP).Append(",").Append(yP).Append(",").Append(xZ).Append(",").Append(yZ).Append(">")
+                End If
+
+                sb.Append(item.SubItems(1).Text).Append("|")
+                sb.Append(item.SubItems(4).Text).Append("|")
+                sb.Append(item.SubItems(5).Text).Append("|")
+                sb.AppendLine(item.SubItems(11).Text)
+            Next
+
+            Using writeFile As IO.FileStream = IO.File.Open(currentLooperFile, IO.FileMode.Create, IO.FileAccess.Write)
+                Using writer As New IO.StreamWriter(writeFile, System.Text.Encoding.Unicode)
+                    writer.Write(sb.ToString())
+                End Using
+            End Using
+
+            setIsModified(0) ' we just saved, so clear the modified flag
         End If
     End Sub
 
@@ -885,15 +984,14 @@
         Dim newOutTime As String = eventsList.SelectedItems(eventsList.SelectedItems.Count - 1).SubItems(5).Text ' the OUT time from the last event is the new OUT time
         Dim newDur As String = NumberToTimeString(TimeStringToNumber(newOutTime) - TimeStringToNumber(newInTime))
 
-        Dim mergeEvents = MessageBox.Show("Do you want to merge these " & eventsList.SelectedItems.Count & " events together into one event?" & vbCrLf & vbCrLf &
+        Dim mergeEvents = ShowTopMostMessageBox("Do you want to merge these " & eventsList.SelectedItems.Count & " events together into one event?" & vbCrLf & vbCrLf &
                                         "The event's new IN time will be: " & newInTime & vbCrLf &
                                         "The event's new OUT time will be: " & newOutTime & vbCrLf &
                                         "The event's new duration will be: " & newDur,
                                               "Merge Events?",
                                               MessageBoxButtons.OKCancel,
                                               MessageBoxIcon.Question,
-                                              MessageBoxDefaultButton.Button1,
-                                              MessageBoxOptions.DefaultDesktopOnly)
+                                              MessageBoxDefaultButton.Button1)
 
         If mergeEvents = DialogResult.OK Then
             eventsList.BeginUpdate() ' stop updating the events list so we can do the next step without glitching the view out
@@ -1228,9 +1326,22 @@
 
     Private Sub searchTF_KeyDown(sender As Object, e As KeyEventArgs) Handles searchTF.KeyDown
         If e.KeyCode = Keys.Enter Or e.KeyCode = Keys.Return Then
-            doSearch()
             eventsList.Focus() ' make the event list the focused item to restore hotkeys/take selection off of the text box
             e.SuppressKeyPress = True ' stop the ding after hitting these buttons
+        ElseIf e.KeyCode = Keys.Escape Then
+            searchTF.Text = Nothing
+            restoreFromSearch()
+            eventsList.Focus()
+            e.SuppressKeyPress = True
+        End If
+    End Sub
+
+    Private Sub searchTF_TextChanged(sender As Object, e As EventArgs) Handles searchTF.TextChanged
+        ' Real-time filter as you type
+        If searchTF.Text = Nothing Or searchTF.Text = "" Then
+            If inSearchMode Then restoreFromSearch() ' restore full list when search is cleared
+        Else
+            doSearch()
         End If
     End Sub
 
@@ -1244,25 +1355,38 @@
     End Sub
 
     Private Sub doSearch()
-        If searchTF.Text <> Nothing And eventsList.Items.Count > 0 Then
+        If searchTF.Text <> Nothing And searchTF.Text <> "" Then
+            ' If we're already in search mode, restore first so we search the full list
+            If inSearchMode Then
+                restoreFromSearch()
+            End If
+
+            If eventsList.Items.Count = 0 Then Exit Sub
+
             eventsList.SelectedIndices.Clear()
 
             If UBound(eventsListArray) = 0 Then ' if the master array hasn't been created yet, then create it...
-                ReDim eventsListArray(eventsList.Items.Count, 8)
+                ReDim eventsListArray(eventsList.Items.Count, 12)
 
                 For a As Integer = 0 To eventsList.Items.Count - 1
-                    For b As Integer = 0 To 7
+                    For b As Integer = 0 To 11
                         eventsListArray(a, b) = eventsList.Items(a).SubItems(b).Text ' get the events into an array
                     Next
 
-                    eventsListArray(a, 8) = eventsList.Items(a).BackColor
+                    eventsListArray(a, 12) = eventsList.Items(a).BackColor
                 Next
             End If
 
             Dim foundIndex As New List(Of Integer)
+            Dim searchText As String = UCase(searchTF.Text)
 
             For a As Integer = 0 To eventsList.Items.Count - 1 ' check the entire list view for the search string
-                If Not UCase(eventsList.Items(a).SubItems(1).Text).Contains(UCase(searchTF.Text)) Then
+                Dim eventName As String = UCase(eventsList.Items(a).SubItems(1).Text)
+                Dim eventPath As String = UCase(eventsList.Items(a).SubItems(11).Text)
+                Dim eventID As String = UCase(eventsList.Items(a).SubItems(0).Text)
+
+                ' Search in event name, file path (includes directory and file name), and event ID
+                If Not (eventName.Contains(searchText) OrElse eventPath.Contains(searchText) OrElse eventID.Contains(searchText)) Then
                     foundIndex.Add(a)
                 End If
             Next
@@ -1295,11 +1419,6 @@
                 If mainWindow.loopModeButton.Text = "Shuffle Mode" Then
                     mainWindow.switchToShuffleMode() ' re-initialize the random number list and re-shuffle (to account for the new listing)
                 End If
-            Else
-                MessageBox.Show("No events matched your search:" & vbCrLf & " " & searchTF.Text,
-                                "No Results Found",
-                                MessageBoxButtons.OK,
-                                MessageBoxIcon.Exclamation)
             End If
         End If
     End Sub
@@ -1314,16 +1433,16 @@
             eventsList.Items.Clear()
 
             For a As Integer = 0 To UBound(eventsListArray) - 1
-                Dim newItemArray(8) As String
+                Dim newItemArray(11) As String
 
-                For b As Integer = 0 To 7
+                For b As Integer = 0 To 11
                     newItemArray(b) = CStr(eventsListArray(a, b)) ' re-add all of the original events back to the events list
                 Next
 
                 Dim newEvent = New ListViewItem(newItemArray)
 
                 eventsList.Items.Add(newEvent)
-                eventsList.Items(eventsList.Items.Count - 1).BackColor = CType(eventsListArray(a, 8), Color) ' the last element of the master array is the original back color
+                eventsList.Items(eventsList.Items.Count - 1).BackColor = CType(eventsListArray(a, 12), Color) ' the last element of the master array is the original back color
             Next
 
             eventsList.EndUpdate() ' start updating the events list again after we're done modifying it

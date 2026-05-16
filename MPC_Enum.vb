@@ -4,6 +4,12 @@
     ' ======================================================================================
     Public ReadOnly INIFile As String = Environment.GetEnvironmentVariable("LocalAppData") & "\Zach Glenwright's Looper 2\MPCLooper.ini"
     Public pausePlaybackOnLoadEvent As Boolean = False ' whether to force pause when loading new events instead of playing them
+    Public skipSaveConfirmations As Boolean = False ' whether to skip all save confirmation dialogs
+    Public skipEventNameEditor As Boolean = False ' whether to skip the event name editor when adding events
+    Public autoSaveLooper As Boolean = False ' whether to automatically save the looper file on changes
+    Public defaultLooperSavePath As String = Nothing ' default directory for saving .looper files
+    Public clearPointsAfterAdd As Boolean = False ' whether to clear IN/OUT points after adding an event
+    Public hotKeyDisabled(44) As Boolean ' per-hotkey disabled state (index 0-44, maps to hotkey IDs 100-144)
 
     Enum KeyModifier
         None = 0

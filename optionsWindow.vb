@@ -1,4 +1,4 @@
-﻿Public Class optionsWindow
+Public Class optionsWindow
     '================== Options not settable by the Options pane, but need to be saved ==================
     Dim options_MPCEXE As String ' this option is not settable from the Options pane, but we need to carry it into the new INI file
     Dim options_autoloadLastLooper As String ' the last looper file to load (this gets set when we quit the program)
@@ -28,7 +28,7 @@
             Dim options_alwaysOnTop As String = betweenTheLines(fileReader, "alwaysOnTop=", vbCrLf, "-1") ' whether or not to always be on top from launch
             Dim options_loopButtonMode As String = betweenTheLines(fileReader, "loopButtonMode=", vbCrLf, "-1") ' what the loop button mode should be on launching
 
-            Dim options_disableHotkeys As String = betweenTheLines(fileReader, "disableHotkeys", vbCrLf, "-1") ' whether or not to disable hotkeys
+            Dim options_disableHotkeys As String = betweenTheLines(fileReader, "disableHotkeys=", vbCrLf, "-1") ' whether or not to disable hotkeys
             Dim options_allowMultipleInstances As String = betweenTheLines(fileReader, "allowMultipleInstances=", vbCrLf, "-1") ' whether or not to allow multiple instances of Looper
             Dim options_disableToolTips As String = betweenTheLines(fileReader, "disableToolTips=", vbCrLf, "-1") ' whether or not to show tooltips on the panels
             Dim options_pausePlaybackOnLoadEvent As String = betweenTheLines(fileReader, "pausePlaybackOnLoadEvent=", vbCrLf, "-1") ' whether to force pause when loading new events instead of playing them
@@ -37,6 +37,11 @@
 
             Dim options_dontForceLooperModeonOpen As String = betweenTheLines(fileReader, "dontForceLooperModeonOpen=", vbCrLf, "-1") ' whether to set Loop in Looper Mode after opening .looper file
             Dim options_autoplayFirstEvent As String = betweenTheLines(fileReader, "autoplayFirstEvent=", vbCrLf, "-1") ' whether to play the first event automatically when opening a .looper file
+            Dim options_skipSaveConfirmations As String = betweenTheLines(fileReader, "skipSaveConfirmations=", vbCrLf, "-1") ' whether to skip save confirmation dialogs
+            Dim options_skipEventNameEditor As String = betweenTheLines(fileReader, "skipEventNameEditor=", vbCrLf, "-1") ' whether to skip event name editor on add
+            Dim options_autoSaveLooper As String = betweenTheLines(fileReader, "autoSaveLooper=", vbCrLf, "-1") ' whether to auto-save looper file on changes
+            Dim options_clearPointsAfterAdd As String = betweenTheLines(fileReader, "clearPointsAfterAdd=", vbCrLf, "-1") ' whether to clear IN/OUT after adding event
+            Dim options_defaultLooperSavePath As String = betweenTheLines(fileReader, "defaultLooperSavePath=", vbCrLf, "-1") ' default save path for .looper files
 
             '================== Load the [System] section ==================
             options_MPCEXE = betweenTheLines(fileReader, "MPCEXE=", vbCrLf, "0") ' the path to MPC-HC
@@ -85,6 +90,14 @@
 
             If options_dontForceLooperModeonOpen <> "-1" Then keepModeCB.Checked = True
             If options_autoplayFirstEvent <> "-1" Then disableAutoPlayOnLoadCB.Checked = True
+            If options_skipSaveConfirmations <> "-1" Then skipSaveConfirmCB.Checked = True
+            If options_skipEventNameEditor <> "-1" Then skipEventNameCB.Checked = True
+            If options_autoSaveLooper <> "-1" Then autoSaveCB.Checked = True
+            If options_clearPointsAfterAdd <> "-1" Then clearPointsCB.Checked = True
+            If options_defaultLooperSavePath <> "-1" Then
+                defaultSavePathTF.Text = options_defaultLooperSavePath
+                saveDefaultPathCB.Checked = True
+            End If
         End If
     End Sub
 
@@ -96,7 +109,7 @@
         If mainWindow.loopPreviewLength = 0 Then mainWindow.loopPreviewLength = 0.25 ' if the conversion didn't work, use the default value
 
         Double.TryParse(slipAmountTF.Text, mainWindow.loopSlipLength) ' change the current slip length to the length you just set
-        If mainWindow.loopSlipLength = 0 Then mainWindow.loopPreviewLength = 0.5 ' ...
+        If mainWindow.loopSlipLength = 0 Then mainWindow.loopSlipLength = 0.5 ' ...
 
         Integer.TryParse(defaultSpeedTF.Text, mainWindow.defaultSpeed) ' change the default playback speed to the speed you just set
         If mainWindow.defaultSpeed = 0 Then mainWindow.defaultSpeed = 100 ' ...
@@ -107,7 +120,8 @@
         If savePreviewTimeCB.Checked Or saveSlipTimeCB.Checked Or saveCurrentLoopButtonCB.Checked Or saveAOTCB.Checked Or
         forcePauseCB.Checked Or keepModeCB.Checked Or disableTTCB.Checked Or autoloadCB.Checked Or allowMICB.Checked Or
         disableAutoPlayCB.Checked Or disableAutoPlayOnLoadCB.Checked Or hidePlaylistWndCB.Checked Or saveSpeedCB.Checked Or
-        saveNewNameCB.Checked Or options_MPCConfirm <> "-1" Or options_dockMode <> "-1" Then
+        saveNewNameCB.Checked Or skipSaveConfirmCB.Checked Or skipEventNameCB.Checked Or autoSaveCB.Checked Or clearPointsCB.Checked Or saveDefaultPathCB.Checked Or
+        options_MPCConfirm <> "-1" Or options_dockMode <> "-1" Then
             writingString = "[Prefs]" & vbCrLf ' write the [Prefs] header of the INI file
         End If
 
@@ -195,6 +209,41 @@
             mainWindow.autoplayFirstEvent = True
         End If
 
+        If skipSaveConfirmCB.Checked Then
+            writingString = writingString & "skipSaveConfirmations=1" & vbCrLf
+            skipSaveConfirmations = True
+        Else
+            skipSaveConfirmations = False
+        End If
+
+        If skipEventNameCB.Checked Then
+            writingString = writingString & "skipEventNameEditor=1" & vbCrLf
+            skipEventNameEditor = True
+        Else
+            skipEventNameEditor = False
+        End If
+
+        If autoSaveCB.Checked Then
+            writingString = writingString & "autoSaveLooper=1" & vbCrLf
+            autoSaveLooper = True
+        Else
+            autoSaveLooper = False
+        End If
+
+        If clearPointsCB.Checked Then
+            writingString = writingString & "clearPointsAfterAdd=1" & vbCrLf
+            clearPointsAfterAdd = True
+        Else
+            clearPointsAfterAdd = False
+        End If
+
+        If saveDefaultPathCB.Checked And defaultSavePathTF.Text <> "" Then
+            writingString = writingString & "defaultLooperSavePath=" & defaultSavePathTF.Text & vbCrLf
+            defaultLooperSavePath = defaultSavePathTF.Text
+        Else
+            defaultLooperSavePath = Nothing
+        End If
+
         If autoloadCB.Checked Then
             If options_autoloadLastLooper = Nothing Then
                 writingString = writingString & "autoloadLastLooper=__FILE__" & vbCrLf
@@ -230,24 +279,29 @@
         Dim headerWritten As Boolean = False
 
         For currentHK = 0 To UBound(mainWindow.hotKeyList)
-            If Not mainWindow.hotKeyList(currentHK, 1) = Nothing Then
+            If Not mainWindow.hotKeyList(currentHK, 1) = Nothing OrElse hotKeyDisabled(currentHK) Then
                 If Not headerWritten Then
                     writingString = writingString & "[HotKeys]" & vbCrLf
                     headerWritten = True
                 End If
 
-                writingString = writingString & (currentHK + 100) & "=" & mainWindow.hotKeyList(currentHK, 1) & vbCrLf
+                If Not mainWindow.hotKeyList(currentHK, 1) = Nothing Then
+                    writingString = writingString & (currentHK + 100) & "=" & mainWindow.hotKeyList(currentHK, 1) & vbCrLf
+                End If
+
+                If hotKeyDisabled(currentHK) Then
+                    writingString = writingString & "D" & (currentHK + 100) & "=1" & vbCrLf
+                End If
             End If
         Next
 
         System.IO.File.WriteAllText(INIFile, writingString)
 
-        MessageBox.Show("Your preferences have been saved to MPCLooper.ini:" & vbCrLf & vbCrLf & writingString,
+        MessageBox.Show(Me, "Your preferences have been saved to MPCLooper.ini:" & vbCrLf & vbCrLf & writingString,
                         "Preferences Saved!",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information,
-                        MessageBoxDefaultButton.Button1,
-                        MessageBoxOptions.DefaultDesktopOnly)
+                        MessageBoxDefaultButton.Button1)
 
         Me.Close()
     End Sub
@@ -276,5 +330,21 @@
     Private Sub cancelPrefsButton_Click(sender As Object, e As EventArgs) Handles cancelPrefsButton.Click
         Me.Close()
         If mainWindow.autoPlayDialogs = True Then mainWindow.SendMessage(CMD_SEND.CMD_PLAY) ' we cancelled out of the Options dialog, so start playing again
+    End Sub
+
+    Private Sub browseSavePathButton_Click(sender As Object, e As EventArgs) Handles browseSavePathButton.Click
+        Using folderDialog As New FolderBrowserDialog With {
+            .Description = "Select default folder for saving .looper files",
+            .ShowNewFolderButton = True
+        }
+            If defaultSavePathTF.Text <> "" Then
+                folderDialog.SelectedPath = defaultSavePathTF.Text
+            End If
+
+            If folderDialog.ShowDialog() = DialogResult.OK Then
+                defaultSavePathTF.Text = folderDialog.SelectedPath
+                saveDefaultPathCB.Checked = True
+            End If
+        End Using
     End Sub
 End Class

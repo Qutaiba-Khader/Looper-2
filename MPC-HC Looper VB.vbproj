@@ -245,7 +245,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
   <PropertyGroup>
-    <PreBuildEvent>cscript C:\Users\ZachGlenwright\Documents\Pre-Compile.vbs</PreBuildEvent>
+    <PreBuildEvent></PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PostBuildEvent>

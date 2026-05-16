@@ -566,6 +566,11 @@ Public Class mainWindow
         Boolean.TryParse(betweenTheLines(fileReader, "autoPlayDialogs=", vbCrLf, "B_True"), autoPlayDialogs)
         Boolean.TryParse(betweenTheLines(fileReader, "dontForceLooperModeonOpen=", vbCrLf, "B_False"), dontForceLooperModeonOpen)
         Boolean.TryParse(betweenTheLines(fileReader, "pausePlaybackOnLoadEvent=", vbCrLf, "B_False"), pausePlaybackOnLoadEvent)
+        Boolean.TryParse(betweenTheLines(fileReader, "skipSaveConfirmations=", vbCrLf, "B_False"), skipSaveConfirmations)
+        Boolean.TryParse(betweenTheLines(fileReader, "skipEventNameEditor=", vbCrLf, "B_False"), skipEventNameEditor)
+        Boolean.TryParse(betweenTheLines(fileReader, "autoSaveLooper=", vbCrLf, "B_False"), autoSaveLooper)
+        defaultLooperSavePath = betweenTheLines(fileReader, "defaultLooperSavePath=", vbCrLf, Nothing)
+        Boolean.TryParse(betweenTheLines(fileReader, "clearPointsAfterAdd=", vbCrLf, "B_False"), clearPointsAfterAdd)
 
         newEventString = betweenTheLines(fileReader, "newEventName=", vbCrLf, "New Loop Event") ' the name for new un-named events on the events list
 
@@ -577,7 +582,7 @@ Public Class mainWindow
         If startPositionL <> "-1" Then Me.Left = CInt(startPositionL)
 
         Dim startPositionT As String = betweenTheLines(fileReader, "startPositionT=", vbCrLf, "-1") ' the top-most coordinate to open Looper at
-        If startPositionL <> "-1" Then Me.Top = CInt(startPositionT)
+        If startPositionT <> "-1" Then Me.Top = CInt(startPositionT)
 
         Dim startPLPositionL As String = betweenTheLines(fileReader, "startPLPositionL=", vbCrLf, "0") ' the left-most coordinate to open Looper's playlist at
         Dim startPLPositionT As String = betweenTheLines(fileReader, "startPLPositionT=", vbCrLf, "0") ' the top-most coordinate to open Looper playlist at
@@ -605,6 +610,10 @@ Public Class mainWindow
         For checkHotKey = 100 To 144 Step 1
             currentHK = betweenTheLines(fileReader, checkHotKey & "=", vbCrLf, "-1") ' check to see if there's an entry for the specific hotkey
             If currentHK <> "-1" Then hotKeyList(checkHotKey - 100, 1) = currentHK ' if there is, then set it
+
+            ' Check if this hotkey is disabled
+            Dim disabledHK As String = betweenTheLines(fileReader, "D" & checkHotKey & "=", vbCrLf, "-1")
+            If disabledHK <> "-1" Then hotKeyDisabled(checkHotKey - 100) = True
         Next
     End Sub
 
@@ -657,6 +666,8 @@ Public Class mainWindow
     ' ======================================================================================
 
     Public Sub assignHotKey(myHandle As IntPtr, myID As Integer)
+        If hotKeyDisabled(myID - 100) Then Return ' skip disabled hotkeys
+
         Dim hkMod, hkKey As Integer
         Dim currentSettings(2) As String
 
@@ -1257,10 +1268,11 @@ Public Class mainWindow
 
     Public Sub setInPoint()
         SendMessage(CMD_SEND.CMD_GETCURRENTPOSITION)
+        Threading.Thread.Sleep(50) ' wait for position response to arrive
         inTF.Text = NumberToTimeString(currentPosition - 0.25 + inPointOffset)
 
         If TimeStringToNumber(inTF.Text) > TimeStringToNumber(outTF.Text) Then
-            clearOutPoint()
+            outTF.Text = Nothing ' clear the OUT point without resetting to end-of-video
         End If
 
         playlistWindow.checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
@@ -1268,7 +1280,8 @@ Public Class mainWindow
 
     Public Sub setOutPoint()
         SendMessage(CMD_SEND.CMD_GETCURRENTPOSITION)
-        outTF.Text = NumberToTimeString(currentPosition)
+        Threading.Thread.Sleep(50) ' wait for position response to arrive
+        outTF.Text = NumberToTimeString(currentPosition + outPointOffset)
 
         playlistWindow.checkAgainstCurrentPlayingEvent() ' check to see if the IN and OUT points match the currently playing event (for highlight)
     End Sub
